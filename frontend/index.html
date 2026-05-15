@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor Proveedores</title>
+  <link rel="manifest" href="/manifest.json">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root { --bg: var(--tg-theme-bg-color, #fff); --text: var(--tg-theme-text-color, #000); --card: var(--tg-theme-secondary-bg-color, #f0f0f0); }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 16px; margin: 0; }
+    h2 { text-align: center; margin-bottom: 20px; }
+    .supplier { background: var(--card); padding: 14px; margin: 10px 0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .supplier h3 { margin: 0 0 6px; font-size: 1.1rem; }
+    .supplier p { margin: 4px 0; font-size: 0.95rem; opacity: 0.9; }
+    .loading, .error { text-align: center; margin-top: 60px; font-size: 1rem; }
+    .btn-back { display: block; margin: 20px auto; padding: 10px 20px; background: #2481cc; color: white; border: none; border-radius: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>🏦 Cuentas Bancarias</h2>
+  <div id="list" class="loading">Cargando proveedores...</div>
+  <button class="btn-back" onclick="window.Telegram.WebApp.close()">Cerrar App</button>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    // 🔁 REEMPLAZA con tu URL de Render
+    const API_URL = "https://TU_RENDER_URL.onrender.com/api/suppliers";
+
+    async function loadSuppliers() {
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error("Error en la respuesta");
+        const data = await res.json();
+        const list = document.getElementById("list");
+        if (data.length === 0) {
+          list.innerHTML = "<div class='loading'>No hay proveedores registrados.</div>";
+          return;
+        }
+        list.innerHTML = data.map(s => `
+          <div class="supplier">
+            <h3>${s.name}</h3>
+            <p>🏦 <strong>Banco:</strong> ${s.bank_name}</p>
+            <p>🔢 <strong>Cuenta:</strong> ${s.account_number}</p>
+            <p>🌍 <strong>SWIFT:</strong> ${s.swift_code || "N/A"}</p>
+          </div>
+        `).join("");
+      } catch (e) {
+        document.getElementById("list").innerHTML = `<div class='error'>⚠️ Error al cargar datos. Verifica la conexión.</div>`;
+        console.error(e);
+      }
+    }
+    loadSuppliers();
+  </script>
+</body>
+</html>
