@@ -1,59 +1,431 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestor Proveedores</title>
-  <link rel="manifest" href="/manifest.json">
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    :root { --bg: var(--tg-theme-bg-color, #fff); --text: var(--tg-theme-text-color, #000); --card: var(--tg-theme-secondary-bg-color, #f0f0f0); }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 16px; margin: 0; }
-    h2 { text-align: center; margin-bottom: 20px; }
-    .supplier { background: var(--card); padding: 14px; margin: 10px 0; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .supplier h3 { margin: 0 0 6px; font-size: 1.1rem; }
-    .supplier p { margin: 4px 0; font-size: 0.95rem; opacity: 0.9; }
-    .loading, .error { text-align: center; margin-top: 60px; font-size: 1rem; }
-    .btn-back { display: block; margin: 20px auto; padding: 10px 20px; background: #2481cc; color: white; border: none; border-radius: 8px; cursor: pointer; }
-  </style>
+    <meta charset="UTF-8">
+    <!-- 1. Viewport: Vital para que se vea como app nativa en el celular -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <title>Control de Asistencia</title>
+    
+    <!-- 2. Telegram Script: Obligatorio para que funcione la Mini App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- 3. Manifest: Para PWA y configuración de tema -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- 4. Estilos: Tu archivo style.css -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Opcional: Icono (Favicon) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
 </head>
 <body>
-  <h2>🏦 Cuentas Bancarias</h2>
-  <div id="list" class="loading">Cargando proveedores...</div>
-  <button class="btn-back" onclick="window.Telegram.WebApp.close()">Cerrar App</button>
+    <div class="app">
+        <header class="header">
+            <div class="status-bar">
+                <span id="hora">--:--</span>
+                <span id="modo-badge" class="modo-badge">🟡 Conectando...</span>
+            </div>
+            <h1>📚 Control de Asistencia</h1>
+            <div class="fecha" id="fecha-display">Cargando...</div>
+        </header>
 
-  <script>
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
+        <div class="fecha-selector">
+            <label>📅 Fecha de asistencia</label>
+            <div class="fecha-row">
+                <input type="date" id="fecha-input">
+                <button class="btn-hoy" onclick="irAHoy()">Hoy</button>
+            </div>
+            <div class="solo-lectura" id="solo-lectura">
+                👁️ Solo lectura - Asistencia ya registrada
+            </div>
+        </div>
 
-    // 🔁 REEMPLAZA con tu URL de Render
-    const API_URL = "https://bot-proveedores-backend.onrender.com/api/suppliers";
+        <div class="filtros">
+            <select id="grado"><option value="">Todos los grados</option></select>
+            <select id="seccion"><option value="">Todas</option></select>
+            <button class="btn-cargar" onclick="cargar()">Cargar</button>
+        </div>
 
-    async function loadSuppliers() {
-      try {
-        const res = await fetch(API_URL);
-        if (!res.ok) throw new Error("Error en la respuesta");
-        const data = await res.json();
-        const list = document.getElementById("list");
-        if (data.length === 0) {
-          list.innerHTML = "<div class='loading'>No hay proveedores registrados.</div>";
-          return;
+        <div class="contador">
+            
+            <div><span class="num presente" id="c-p">0</span><span class="label">Presentes</span></div>
+            <div><span class="num ausente" id="c-a">0</span><span class="label">Ausentes</span></div>
+            <div><span class="num tardanza" id="c-t">0</span><span class="label">Tardanzas</span></div>
+            
+            <!--  ← AGREGAR ESTO (Justificado) -->
+            <div><span class="num justificado" id="c-j" style="color: #2196f3;">0</span><span class="label">Justificado</span></div>
+            
+            <div><span class="num excursion" id="c-e" style="color: #9c27b0;">0</span><span class="label">Excursión</span></div>
+            <div><span class="num pendiente" id="c-pend">0</span><span class="label">Pendientes</span></div>
+        </div>
+
+        <div class="lista" id="lista">
+            <div class="loading">Seleccioná grado/sección y tocá "Cargar"</div>
+        </div>
+
+        <div class="acciones">
+            <button class="btn-guardar" id="btn-guardar" onclick="guardar()">💾 Guardar</button>
+            <button class="btn-stats" onclick="stats()">📊 Stats</button>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script>
+        // ==================== CONFIGURACIÓN ====================
+        // ⚠️ IMPORTANTE: Cambiá esta URL por tu ngrok actual o servidor Oracle Cloud
+        const API = 'https://bot-proveedores-backend.onrender.com'; //debo cambiar de nombre en Render.
+        
+        const tg = window.Telegram.WebApp;
+        let user = null;
+        let alumnos = [];
+        let fechaSel = new Date().toISOString().split('T')[0];
+        
+        const estados = {
+            P: { icon: '✅', label: 'Presente', cls: 'sel-p' },
+            A: { icon: '❌', label: 'Ausente', cls: 'sel-a' },
+            T: { icon: '⏰', label: 'Tardanza', cls: 'sel-t' },
+            J: { icon: '📝', label: 'Justificado', cls: 'sel-j' },
+            E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
+        };
+        
+        // ==================== INICIALIZACIÓN ====================
+        function init() {
+            console.log('🚀 Iniciando Mini App...');
+            
+            tg.ready();
+            tg.expand();
+            
+            // Hora
+            actualizarHora();
+            setInterval(actualizarHora, 1000);
+            
+            // Fecha
+            const inputFecha = document.getElementById('fecha-input');
+            if (inputFecha) {
+                inputFecha.value = fechaSel;
+                inputFecha.addEventListener('change', function(e) {
+                    fechaSel = e.target.value;
+                    actualizarFecha();
+                    cargar();
+                });
+            }
+            
+            actualizarFecha();
+            
+            // Autenticar y cargar
+            auth().then(() => {
+                verificarConexion();
+                cargarFiltros();
+            }).catch(err => {
+                console.error('Error init:', err);
+                mostrarError('Error de conexión. Intentá de nuevo.');
+            });
         }
-        list.innerHTML = data.map(s => `
-          <div class="supplier">
-            <h3>${s.name}</h3>
-            <p>🏦 <strong>Banco:</strong> ${s.bank_name}</p>
-            <p>🔢 <strong>Cuenta:</strong> ${s.account_number}</p>
-            <p>🌍 <strong>SWIFT:</strong> ${s.swift_code || "N/A"}</p>
-          </div>
-        `).join("");
-      } catch (e) {
-        document.getElementById("list").innerHTML = `<div class='error'>⚠️ Error al cargar datos. Verifica la conexión.</div>`;
-        console.error(e);
+        
+        function actualizarHora() {
+            const el = document.getElementById('hora');
+            if (el) {
+                el.textContent = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
+            }
+        }
+        
+        // ==================== AUTH ====================
+        async function auth() {
+            try {
+                console.log('🔑 Autenticando...');
+                const r = await fetch(`${API}/auth`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({initData: tg.initData || ''})
+                });
+                const d = await r.json();
+                if (!d.success) throw new Error('No auth');
+                user = d.user;
+                console.log('✅ Autenticado:', user.first_name);
+            } catch (e) {
+                console.error('❌ Auth error:', e);
+                document.body.innerHTML = '<div style="padding:40px;text-align:center"><h2>⛔ Acceso denegado</h2><p>Solo el maestro autorizado puede usar esta app.</p></div>';
+                throw e;
+            }
+        }
+        
+        // ==================== CONEXIÓN ====================
+        async function verificarConexion() {
+            try {
+                const r = await fetch(`${API}/`, {method: 'GET'});
+                const d = await r.json();
+                const badge = document.getElementById('modo-badge');
+                if (badge) {
+                    badge.textContent = d.modo === 'online' ? '🟢 Online' : '🟡 Offline';
+                }
+                console.log('📡 Modo:', d.modo);
+            } catch (e) {
+                console.error('❌ Sin conexión:', e);
+                const badge = document.getElementById('modo-badge');
+                if (badge) badge.textContent = '🔴 Sin conexión';
+            }
+        }
+        
+        // ==================== FECHA ====================
+        function actualizarFecha() {
+            const f = new Date(fechaSel + 'T00:00:00');
+            const display = document.getElementById('fecha-display');
+            if (display) {
+                display.textContent = f.toLocaleDateString('es-ES', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                });
+            }
+            
+            const hoy = new Date().toISOString().split('T')[0];
+            const badge = document.getElementById('solo-lectura');
+            const btn = document.getElementById('btn-guardar');
+            
+            if (!badge || !btn) return;
+            
+            if (fechaSel === hoy) {
+                badge.style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = '💾 Guardar';
+            } else if (fechaSel < hoy) {
+                badge.style.display = 'block';
+                badge.textContent = '👁️ Cargando asistencia histórica';
+                btn.disabled = false;
+                btn.textContent = '💾 Cargar atrasado';
+            } else {
+                badge.style.display = 'block';
+                badge.textContent = '🔒 No se puede registrar asistencia futura';
+                btn.disabled = true;
+                btn.textContent = '🔒 Bloqueado';
+            }
+        }
+        
+        function irAHoy() {
+            fechaSel = new Date().toISOString().split('T')[0];
+            const input = document.getElementById('fecha-input');
+            if (input) input.value = fechaSel;
+            actualizarFecha();
+            cargar();
+        }
+        
+        // ==================== FILTROS ====================
+        async function cargarFiltros() {
+            try {
+                console.log('📥 Cargando filtros...');
+                const r = await fetch(`${API}/alumnos`);
+                const data = await r.json();
+                
+                const grados = [...new Set(data.map(a => a.grado))].sort();
+                const secciones = [...new Set(data.map(a => a.seccion))].sort();
+                
+                const sg = document.getElementById('grado');
+                const ss = document.getElementById('seccion');
+                
+                if (sg) grados.forEach(g => sg.add(new Option(g, g)));
+                if (ss) secciones.forEach(s => ss.add(new Option('Sección ' + s, s)));
+                
+                console.log('✅ Filtros cargados');
+            } catch (e) {
+                console.error('❌ Error filtros:', e);
+            }
+        }
+        
+        // ==================== CARGAR ALUMNOS ====================
+        async function cargar() {
+            const g = document.getElementById('grado')?.value || '';
+            const s = document.getElementById('seccion')?.value || '';
+            
+            tg.showProgress();
+            
+            try {
+                console.log('📥 Cargando alumnos...');
+                
+                // Alumnos
+                const params = new URLSearchParams();
+                if (g) params.append('grado', g);
+                if (s) params.append('seccion', s);
+                const al = await (await fetch(`${API}/alumnos?${params}`)).json();
+                
+                // Asistencia del día
+                const ap = new URLSearchParams();
+                ap.append('fecha', fechaSel);
+                if (g) ap.append('grado', g);
+                if (s) ap.append('seccion', s);
+                const asis = await (await fetch(`${API}/asistencia/hoy?${ap}`)).json();
+                
+                // Combinar
+                const asisMap = {};
+                (asis.asistencia || []).forEach(a => {
+                    asisMap[a.alumno_id || a.id] = a.estado;
+                });
+                
+                alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
+                
+                renderizar();
+                contar();
+                
+                console.log('✅ Alumnos cargados:', alumnos.length);
+            } catch (e) {
+                console.error('❌ Error cargando:', e);
+                mostrarError('Error al cargar alumnos: ' + e.message);
+            }
+            
+            tg.hideProgress();
+        }
+        
+        // ==================== RENDERIZAR ====================
+        function renderizar() {
+            const container = document.getElementById('lista');
+            if (!container) return;
+            
+            if (alumnos.length === 0) {
+                container.innerHTML = '<div class="loading">No hay alumnos para mostrar</div>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            alumnos.forEach((a, i) => {
+                const ini = (a.nombre[0] + (a.apellido_paterno || a.apellido || '')[0]).toUpperCase();
+                const card = document.createElement('div');
+                card.className = 'card' + (a.estado ? ' completo' : '');
+                card.style.animationDelay = (i * 0.03) + 's';
+                
+                let btns = '';
+                ['P','A','T','J'].forEach(cod => {
+                    const sel = a.estado === cod ? estados[cod].cls : '';
+                    const dis = fechaSel > new Date().toISOString().split('T')[0] ? 'disabled' : '';
+                    btns += `<button class="${sel}" ${dis} onclick="marcar(${a.id}, '${cod}', this)"><span>${estados[cod].icon}</span><small>${estados[cod].label}</small></button>`;
+                });
+                
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div>
+                            <h3>${a.nombre} ${a.apellido_paterno || ''} ${a.apellido_materno || ''}</h3>
+                            <span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span>
+                        </div>
+                        <div class="foto">${ini}</div>
+                    </div>
+                    <div class="estados">${btns}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        function marcar(id, estado, btn) {
+            const a = alumnos.find(x => x.id === id);
+            if (!a) return;
+            
+            a.estado = estado;
+            
+            const card = btn.closest('.card');
+            if (card) {
+                card.querySelectorAll('button').forEach(b => b.className = '');
+                btn.classList.add(estados[estado].cls);
+                card.classList.add('completo');
+            }
+            
+            contar();
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+        
+        function contar() {
+            const p = alumnos.filter(a => a.estado === 'P').length;
+            const a = alumnos.filter(a => a.estado === 'A').length;
+            const t = alumnos.filter(a => a.estado === 'T').length;
+            const pend = alumnos.filter(a => !a.estado).length;
+            
+            const cp = document.getElementById('c-p');
+            const ca = document.getElementById('c-a');
+            const ct = document.getElementById('c-t');
+            const cpend = document.getElementById('c-pend');
+            
+            if (cp) cp.textContent = p;
+            if (ca) ca.textContent = a;
+            if (ct) ct.textContent = t;
+            if (cpend) cpend.textContent = pend;
+        }
+        
+        // ==================== GUARDAR ====================
+        async function guardar() {
+            const regs = alumnos.filter(a => a.estado).map(a => ({
+                alumno_id: a.id,
+                fecha: fechaSel,
+                estado: a.estado,
+                hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}),
+                user_id: user?.id || 0
+            }));
+            
+            if (!regs.length) {
+                tg.showAlert('No hay asistencia para guardar');
+                return;
+            }
+            
+            tg.showProgress();
+            
+            try {
+                const r = await fetch(`${API}/asistencia/registrar`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({registros: regs, user_id: user?.id || 0})
+                });
+                const d = await r.json();
+                
+                const toast = document.getElementById('toast');
+                if (toast) {
+                    toast.textContent = d.modo === 'online'
+                        ? `✅ Guardado en la nube (${d.registros} registros)`
+                        : `💾 ${d.mensaje || 'Guardado localmente'}`;
+                    toast.style.background = d.modo === 'online' ? '#1a1a1a' : '#ff9800';
+                    toast.classList.add('show');
+                    setTimeout(() => toast.classList.remove('show'), 3000);
+                }
+                
+                console.log('✅ Guardado:', d);
+            } catch (e) {
+                console.error('❌ Error guardando:', e);
+                tg.showAlert('Error al guardar: ' + e.message);
+            }
+            
+            tg.hideProgress();
+        }
+        
+        // ==================== STATS ====================
+        function stats() {
+            const p = alumnos.filter(a => a.estado === 'P').length;
+            const a = alumnos.filter(a => a.estado === 'A').length;
+            const t = alumnos.filter(a => a.estado === 'T').length;
+            const j = alumnos.filter(a => a.estado === 'J').length;
+            const total = alumnos.length;
+            
+            const fechaText = document.getElementById('fecha-display')?.textContent || fechaSel;
+            
+            alert(`📊 ${fechaText}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${a}\n⏰ Tardanzas: ${t}\n📝 Justificados: ${j}\n\nTotal: ${total} alumnos`);
+        }
+        
+        // ==================== UTILS ====================
+        function mostrarError(msg) {
+            const lista = document.getElementById('lista');
+            if (lista) lista.innerHTML = `<div class="error">${msg}</div>`;
+        }
+        
+        // ==================== INICIAR ====================
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+    <!-- Registrar Service Worker para PWA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('✅ SW registrado:', reg.scope))
+          .catch(err => console.error('❌ SW error:', err));
       }
-    }
-    loadSuppliers();
-  </script>
+    </script>
+    
 </body>
 </html>
