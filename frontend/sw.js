@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asistencia-escolar-v1';
+const CACHE_NAME = 'asistencia-escolar-v2';
 
 // Archivos que queremos guardar para que la app abra rápido (incluso offline)
 const ASSETS = [
