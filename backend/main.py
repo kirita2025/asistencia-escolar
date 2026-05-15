@@ -1,18 +1,16 @@
-import os, logging
+import os, hashlib, hmac, urllib.parse, json, logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from supabase import create_client
-from telegram import Update, InlineKeyboardButton, WebAppInfo, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes
 from fastapi.responses import JSONResponse
+from supabase import create_client
 
-# Configurar logging
+# 🔧 Configuración inicial
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Proveedor MiniApp Backend")
+app = FastAPI(title="Asistencia Escolar API")
 
-# CORS (para MVP, permitir todos los orígenes)
+# 🌐 CORS (permite llamadas desde Netlify/Telegram)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,93 +19,140 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Supabase
+# 🗄️ Conexión a Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-@app.get("/api/suppliers")
-async def get_suppliers():
-    if not supabase:
-        return {"error": "Supabase no configurado"}
+# 🔐 Validación de Telegram (Modo Dev/Prod)
+def validar_telegram(init_data: str):
+    """Valida el hash de Telegram y extrae el usuario"""
+    if not BOT_TOKEN:
+        logger.warning("⚠️ BOT_TOKEN no configurado. Auth en modo desarrollo (acepta datos sin validar hash).")
+        parsed = urllib.parse.parse_qs(init_data)
+        user_str = parsed.get('user', [None])[0]
+        if user_str:
+            return {"valid": True, "user": json.loads(user_str)}
+        return {"valid": False, "error": "No user data"}
+
     try:
-        response = supabase.table("suppliers").select("*").execute()
+        parsed = urllib.parse.parse_qs(init_data)
+        received_hash = parsed.get('hash', [None])[0]
+        if not received_hash:
+            return {"valid": False, "error": "No hash"}
+
+        data_to_check = {k: v[0] for k, v in parsed.items() if k != 'hash'}
+        data_check_string = '\n'.join([f"{k}={v}" for k, v in sorted(data_to_check.items())])
+
+        secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+        calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+
+        if calculated_hash != received_hash:
+            return {"valid": False, "error": "Hash inválido"}
+
+        return {"valid": True, "user": json.loads(data_to_check.get('user', '{}'))}
+    except Exception as e:
+        logger.error(f"Error validando Telegram: {e}")
+        return {"valid": False, "error": str(e)}
+
+#  Endpoints
+
+@app.get("/api/")
+async def health():
+    """Health check para verificar conexión online/offline"""
+    return {"modo": "online", "status": "ok"}
+
+@app.post("/api/auth")
+async def auth(request: Request):
+    """Autentica al maestro mediante initData de Telegram"""
+    try:
+        body = await request.json()
+        init_data = body.get("initData", "")
+        if not init_data:
+            return {"success": False, "message": "Falta initData"}
+        
+        result = validar_telegram(init_data)
+        if result["valid"]:
+            logger.info(f"✅ Maestro autenticado: {result['user'].get('first_name')}")
+            return {"success": True, "user": result["user"]}
+        else:
+            return {"success": False, "message": result.get("error", "Auth fallida")}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.get("/api/alumnos")
+async def get_alumnos(grado: str = None, seccion: str = None):
+    """Obtiene lista de alumnos con filtros opcionales"""
+    try:
+        query = supabase.table("alumnos").select("*")
+        if grado:
+            query = query.eq("grado", grado)
+        if seccion:
+            query = query.eq("seccion", seccion)
+        
+        response = query.order("apellido_paterno").execute()
         return response.data
     except Exception as e:
-        logger.error(f"Error fetching suppliers: {e}")
-        return {"error": str(e)}
+        logger.error(f"Error alumnos: {e}")
+        return []
 
-# 🔍 Endpoint de debug (sólo para MVP)
-@app.get("/debug/env")
-async def debug_env():
+@app.get("/api/asistencia/hoy")
+async def get_asistencia(fecha: str = None, grado: str = None, seccion: str = None):
+    """Obtiene registros de asistencia para una fecha/grado/sección"""
+    try:
+        query = supabase.table("asistencia").select("*")
+        if fecha:
+            query = query.eq("fecha", fecha)
+        
+        response = query.execute()
+        data = response.data
+
+        # Si se filtra por grado/sección, cruzamos IDs
+        if grado or seccion:
+            alumnos_q = supabase.table("alumnos").select("id")
+            if grado: alumnos_q = alumnos_q.eq("grado", grado)
+            if seccion: alumnos_q = alumnos_q.eq("seccion", seccion)
+            
+            ids_validos = [a["id"] for a in alumnos_q.execute().data]
+            data = [r for r in data if r["alumno_id"] in ids_validos]
+
+        return {"asistencia": data}
+    except Exception as e:
+        logger.error(f"Error asistencia: {e}")
+        return {"asistencia": []}
+
+@app.post("/api/asistencia/registrar")
+async def registrar_asistencia(request: Request):
+    """Guarda lote de asistencia diaria"""
+    try:
+        body = await request.json()
+        registros = body.get("registros", [])
+        user_id = body.get("user_id", 0)
+
+        if not registros:
+            return {"success": False, "message": "No hay registros para guardar"}
+
+        # Inserta en Supabase (MVP: insert directo. Más adelante optimizaremos con upsert)
+        supabase.table("asistencia").insert(registros).execute()
+        
+        logger.info(f"💾 {len(registros)} registros guardados por user_id: {user_id}")
+        return {
+            "success": True, 
+            "registros": len(registros), 
+            "modo": "online", 
+            "mensaje": "Asistencia guardada correctamente"
+        }
+    except Exception as e:
+        logger.error(f"Error DB: {e}")
+        return {"success": False, "message": str(e)}
+
+@app.get("/api/debug")
+async def debug():
+    """Endpoint de diagnóstico rápido"""
     return {
-        "SUPABASE_URL_set": bool(os.getenv("SUPABASE_URL")),
-        "SUPABASE_KEY_set": bool(os.getenv("SUPABASE_SERVICE_KEY")),
-        "BOT_TOKEN_set": bool(os.getenv("BOT_TOKEN")),
-        "BOT_TOKEN_length": len(os.getenv("BOT_TOKEN", "")),
-        "WEBAPP_URL": os.getenv("WEBAPP_URL", "not set"),
-        "BOT_URL": os.getenv("BOT_URL", "not set"),
+        "supabase_url": bool(SUPABASE_URL),
+        "supabase_key": bool(SUPABASE_KEY),
+        "bot_token": bool(BOT_TOKEN),
+        "tables": ["alumnos", "asistencia"]
     }
-
-# Telegram Bot (inicialización segura)
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://placeholder.netlify.app")
-BOT_URL = os.getenv("BOT_URL")  # Puede ser None en MVP
-
-bot_app = None
-if BOT_TOKEN and BOT_TOKEN.strip():
-    try:
-        bot_app = Application.builder().token(BOT_TOKEN.strip()).build()
-        
-        async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            lang = update.effective_user.language_code or "es"
-            msg = "👋 ¡Bienvenido! Gestiona cuentas bancarias de proveedores."
-            btn = "🏦 Abrir Gestor de Proveedores"
-            keyboard = [[InlineKeyboardButton(btn, web_app=WebAppInfo(url=WEBAPP_URL))]]
-            await update.message.reply_text(msg, reply_markup=InlineKeyboardMarkup(keyboard))
-        
-        bot_app.add_handler(CommandHandler("start", start))
-        logger.info("✅ Bot de Telegram inicializado")
-    except Exception as e:
-        logger.error(f"❌ Error inicializando bot: {e}")
-        bot_app = None  # Continuar sin bot si falla
-else:
-    logger.warning("⚠️ BOT_TOKEN no configurado o vacío. El bot no funcionará, pero la API sí.")
-
-@app.on_event("startup")
-async def startup():
-    # Configurar webhook SOLO si bot_app existe y BOT_URL está definido
-    if bot_app and BOT_URL:
-        try:
-            webhook_url = f"{BOT_URL}/webhook"
-            await bot_app.set_webhook(webhook_url)
-            bot_app.start()
-            logger.info(f"🔗 Webhook configurado: {webhook_url}")
-        except Exception as e:
-            logger.error(f"⚠️ Error configurando webhook (no crítico para MVP): {e}")
-            # No lanzar excepción para que la API siga funcionando
-    else:
-        logger.info("ℹ️ Webhook no configurado (BOT_URL o BOT_TOKEN faltan). La API /api/suppliers sigue disponible.")
-
-@app.on_event("shutdown")
-async def shutdown():
-    if bot_app:
-        bot_app.stop()
-
-@app.post("/webhook")
-async def telegram_webhook(request: Request):
-    if not bot_app:
-        return JSONResponse({"ok": False, "error": "Bot not initialized"})
-    try:
-        data = await request.json()
-        update = Update.de_json(data, bot_app.bot)
-        await bot_app.process_update(update)
-        return JSONResponse({"ok": True})
-    except Exception as e:
-        logger.error(f"Error processing webhook: {e}")
-        return JSONResponse({"ok": False, "error": str(e)})
-
-# Health check
-@app.get("/health")
-async def health():
-    return {"status": "ok", "service": "backend"}
