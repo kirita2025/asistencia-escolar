@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Asistencia</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body style="font-family:sans-serif;padding:20px">
+  <h1>🧪 Test de Botones</h1>
+  <div id="status">Cargando...</div>
+  <button onclick="testClick('✅ Presente')">✅ Presente</button>
+  <button onclick="testClick('❌ Ausente')">❌ Ausente</button>
+  <button onclick="testClick('🚌 Excursión')">🚌 Excursión</button>
+  <div id="result" style="margin-top:20px;font-weight:bold"></div>
+
+  <script>
+    // Test mínimo: sin dependencias externas
+    const tg = window.Telegram.WebApp;
+    
+    function testClick(estado) {
+      document.getElementById('result').textContent = 'Tocaste: ' + estado + ' @ ' + new Date().toLocaleTimeString();
+      console.log('✅ Botón funcionó:', estado);
+    }
+    
+    window.onload = function() {
+      document.getElementById('status').textContent = '✅ App cargada. Probá los botones.';
+      console.log('🚀 Test loaded');
+    };
+  </script>
+</body>
+</html>
