@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Control de Asistencia</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -53,6 +53,17 @@
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; }
+        /* ✅ Mejorar respuesta táctil en móviles */
+        .estados button {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+        }
+        .estados button:active {
+            transform: scale(0.95);
+            transition: transform 0.1s ease;
+        }
+
     </style>
 </head>
 <body>
@@ -265,10 +276,12 @@
                 card.style.animationDelay = (i * 0.03) + 's';
                 let btns = '';
                 // ✅ 5 estados: P, A, T, J, E
+                // Dentro de renderizar(), reemplazá el forEach de botones por esto:
                 ['P','A','T','J','E'].forEach(cod => {
                     const sel = a.estado === cod ? estados[cod].cls : '';
                     const dis = fechaSel > new Date().toISOString().split('T')[0] ? 'disabled' : '';
-                    btns += `<button class="${sel}" ${dis} onclick="marcar(${a.id}, '${cod}', this)"><span>${estados[cod].icon}</span><small>${estados[cod].label}</small></button>`;
+                    // ✅ Agregamos ontouchstart para compatibilidad móvil
+                    btns += `<button class="${sel}" ${dis} onclick="marcar(${a.id}, '${cod}', this)" ontouchstart="marcar(${a.id}, '${cod}', this)"><span>${estados[cod].icon}</span><small>${estados[cod].label}</small></button>`;
                 });
                 card.innerHTML = `<div class="card-header"><div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div></div><div class="estados">${btns}</div>`;
                 container.appendChild(card);
