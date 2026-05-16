@@ -237,7 +237,9 @@
             const g = document.getElementById('grado')?.value || '';
             const s = document.getElementById('seccion')?.value || '';
             
-            tg.showProgress();
+            // Mostrar mensaje de carga
+            const lista = document.getElementById('lista');
+            lista.innerHTML = '<div class="loading">⏳ Cargando alumnos...</div>';
             
             try {
                 console.log('📥 Cargando alumnos...');
@@ -271,10 +273,7 @@
                 console.error('❌ Error cargando:', e);
                 mostrarError('Error al cargar alumnos: ' + e.message);
             }
-            
-            tg.hideProgress();
         }
-        
         // ==================== RENDERIZAR ====================
         function renderizar() {
             const container = document.getElementById('lista');
@@ -363,7 +362,11 @@
                 return;
             }
             
-            tg.showProgress();
+            // Deshabilitar botón mientras guarda
+            const btn = document.getElementById('btn-guardar');
+            const textoOriginal = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ Guardando...';
             
             try {
                 const r = await fetch(`${API}/asistencia/registrar`, {
@@ -387,9 +390,12 @@
             } catch (e) {
                 console.error('❌ Error guardando:', e);
                 tg.showAlert('Error al guardar: ' + e.message);
+            } finally {
+                // Restaurar botón
+                const btn = document.getElementById('btn-guardar');
+                btn.disabled = false;
+                btn.textContent = '💾 Guardar';
             }
-            
-            tg.hideProgress();
         }
         
         // ==================== STATS ====================
