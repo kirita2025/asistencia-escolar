@@ -55,7 +55,46 @@ function actualizarFecha(){const f=new Date(fechaSel+'T00:00:00'),d=document.get
 function irAHoy(){fechaSel=new Date().toISOString().split('T')[0];const i=document.getElementById('fecha-input');if(i)i.value=fechaSel;actualizarFecha();cargar()}
 async function cargarFiltros(){try{console.log('📥 Cargando filtros...');const r=await fetch(API+'/alumnos'),data=await r.json(),grados=[...new Set(data.map(a=>a.grado))].sort(),secciones=[...new Set(data.map(a=>a.seccion))].sort(),sg=document.getElementById('grado'),ss=document.getElementById('seccion');if(sg)grados.forEach(g=>sg.add(new Option(g,g)));if(ss)secciones.forEach(s=>ss.add(new Option('Sección '+s,s)));console.log('✅ Filtros cargados')}catch(e){console.error('❌ Error filtros:',e)}}
 async function cargar(){const g=document.getElementById('grado')?.value||'',s=document.getElementById('seccion')?.value||'',lista=document.getElementById('lista');lista.innerHTML='<div class="loading">⏳ Cargando alumnos...</div>';try{console.log('📥 Cargando alumnos...');const params=new URLSearchParams();if(g)params.append('grado',g);if(s)params.append('seccion',s);const al=await(await fetch(API+'/alumnos?'+params)).json(),ap=new URLSearchParams();ap.append('fecha',fechaSel);if(g)ap.append('grado',g);if(s)ap.append('seccion',s);const asis=await(await fetch(API+'/asistencia/hoy?'+ap)).json(),asisMap={};(asis.asistencia||[]).forEach(a=>{asisMap[a.alumno_id||a.id]=a.estado});alumnos=al.map(a=>({...a,estado:asisMap[a.id]||null}));renderizar();contar();console.log('✅ Alumnos cargados:',alumnos.length)}catch(e){console.error('❌ Error cargando:',e);mostrarError('Error: '+e.message)}}
-function renderizar(){const c=document.getElementById('lista');if(!c)return;if(alumnos.length===0){c.innerHTML='<div class="loading">No hay alumnos</div>';return}c.innerHTML='';alumnos.forEach((a,i)=>{const ini=(a.nombre[0]+(a.apellido_paterno||a.apellido||'')[0]).toUpperCase(),card=document.createElement('div');card.className='card'+(a.estado?' completo':'');card.style.animationDelay=(i*0.03)+'s';let btns='';['P','A','T','J','E'].forEach(cod=>{const sel=a.estado===cod?estados[cod].cls:'',dis=fechaSel>new Date().toISOString().split('T')[0]?'disabled':'';btns+=`<button class="${sel}" ${dis} onclick="marcar(${a.id},'${cod}',this)"><span>${estados[cod].icon}</span><small>${estados[cod].label}</small></button>`});card.innerHTML=`<div class="card-header"><div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div></div><div class="estados">${btns}</div>`;c.appendChild(card)})}
+
+function renderizar(){
+  const c=document.getElementById('lista');
+  if(!c)return;
+  if(alumnos.length===0){c.innerHTML='<div class="loading">No hay alumnos</div>';return}
+  c.innerHTML='';
+  alumnos.forEach((a,i)=>{
+    const ini=(a.nombre[0]+(a.apellido_paterno||a.apellido||'')[0]).toUpperCase(),
+    card=document.createElement('div');
+    card.className='card'+(a.estado?' completo':'');
+    card.style.animationDelay=(i*0.03)+'s';
+    
+    // Header de la tarjeta
+    const header=document.createElement('div');
+    header.className='card-header';
+    header.innerHTML=`<div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div>`;
+    
+    // Container de botones
+    const estadosDiv=document.createElement('div');
+    estadosDiv.className='estados';
+    
+    // Crear botones con addEventListener (más robusto que onclick inline)
+    ['P','A','T','J','E'].forEach(cod=>{
+      const btn=document.createElement('button');
+      btn.innerHTML=`<span>${estados[cod].icon}</span><small>${estados[cod].label}</small>`;
+      // Aplicar clase si ya está seleccionado
+      if(a.estado===cod)btn.className=estados[cod].cls;
+      // Deshabilitar si es fecha futura
+      if(fechaSel>new Date().toISOString().split('T')[0])btn.disabled=true;
+      // Evento click con addEventListener
+      btn.addEventListener('click',()=>marcar(a.id,cod,btn));
+      estadosDiv.appendChild(btn);
+    });
+    
+    card.appendChild(header);
+    card.appendChild(estadosDiv);
+    c.appendChild(card);
+  });
+}
+
 function marcar(id,estado,btn){const a=alumnos.find(x=>x.id===id);if(!a)return;a.estado=estado;const card=btn.closest('.card');if(card){card.querySelectorAll('button').forEach(b=>b.className='');btn.classList.add(estados[estado].cls);card.classList.add('completo')}contar();if(navigator.vibrate)navigator.vibrate(10)}
 function contar(){const p=alumnos.filter(a=>a.estado==='P').length,au=alumnos.filter(a=>a.estado==='A').length,t=alumnos.filter(a=>a.estado==='T').length,j=alumnos.filter(a=>a.estado==='J').length,e=alumnos.filter(a=>a.estado==='E').length,pend=alumnos.filter(a=>!a.estado).length;['c-p','c-a','c-t','c-j','c-e','c-pend'].forEach((id,idx)=>{const el=document.getElementById(id),val=[p,au,t,j,e,pend][idx];if(el)el.textContent=val})}
 async function guardar(){const regs=alumnos.filter(a=>a.estado).map(a=>({alumno_id:a.id,fecha:fechaSel,estado:a.estado,hora:new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),user_id:user?.id||0}));if(!regs.length){tg.showAlert('No hay asistencia para guardar');return}const btn=document.getElementById('btn-guardar'),orig=btn.textContent;btn.disabled=true;btn.textContent='⏳ Guardando...';try{const r=await fetch(API+'/asistencia/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({registros:regs,user_id:user?.id||0})}),d=await r.json(),toast=document.getElementById('toast');if(toast){toast.textContent=d.modo==='online'?`✅ Guardado (${d.registros} registros)`:(`💾 ${d.mensaje||'Guardado'}`);toast.style.background=d.modo==='online'?'#1a1a1a':'#ff9800';toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3e3)}console.log('✅ Guardado:',d)}catch(e){console.error('❌ Error guardando:',e);tg.showAlert('Error: '+e.message)}finally{const btn=document.getElementById('btn-guardar');btn.disabled=false;btn.textContent=orig}}
