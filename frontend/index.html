@@ -2,22 +2,12 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <!-- 1. Viewport: Vital para que se vea como app nativa en el celular -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    
     <title>Control de Asistencia</title>
-    
-    <!-- 2. Telegram Script: Obligatorio para que funcione la Mini App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- 3. Manifest: Para PWA y configuración de tema -->
     <link rel="manifest" href="manifest.json">
-    
-    <!-- 4. Estilos: Tu archivo style.css -->
     <link rel="stylesheet" href="style.css">
-    
-    <!-- Opcional: Icono (Favicon) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
 </head>
 <body>
@@ -49,15 +39,11 @@
         </div>
 
         <div class="contador">
-            
             <div><span class="num presente" id="c-p">0</span><span class="label">Presentes</span></div>
             <div><span class="num ausente" id="c-a">0</span><span class="label">Ausentes</span></div>
             <div><span class="num tardanza" id="c-t">0</span><span class="label">Tardanzas</span></div>
-            
-            <!--  ← AGREGAR ESTO (Justificado) -->
-            <div><span class="num justificado" id="c-j" style="color: #2196f3;">0</span><span class="label">Justificado</span></div>
-            
-            <div><span class="num excursion" id="c-e" style="color: #9c27b0;">0</span><span class="label">Excursión</span></div>
+            <div><span class="num justificado" id="c-j" style="color:#2196f3">0</span><span class="label">Justificado</span></div>
+            <div><span class="num excursion" id="c-e" style="color:#9c27b0">0</span><span class="label">Excursión</span></div>
             <div><span class="num pendiente" id="c-pend">0</span><span class="label">Pendientes</span></div>
         </div>
 
@@ -74,10 +60,7 @@
     </div>
 
     <script>
-        // ==================== CONFIGURACIÓN ====================
-        // ⚠️ IMPORTANTE: Cambiá esta URL por tu ngrok actual o servidor Oracle Cloud
-        // ✅ URL del backend con prefijo /api para todos los endpoints
-        const API = 'https://bot-proveedores-backend.onrender.com/api';    //luego debo cambiar de nombre bot-proveedores por algo como Asistencia-escolar.     
+        const API = 'https://bot-proveedores-backend.onrender.com/api';
         const tg = window.Telegram.WebApp;
         let user = null;
         let alumnos = [];
@@ -91,18 +74,13 @@
             E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
         };
         
-        // ==================== INICIALIZACIÓN ====================
         function init() {
             console.log('🚀 Iniciando Mini App...');
-            
             tg.ready();
             tg.expand();
-            
-            // Hora
             actualizarHora();
             setInterval(actualizarHora, 1000);
             
-            // Fecha
             const inputFecha = document.getElementById('fecha-input');
             if (inputFecha) {
                 inputFecha.value = fechaSel;
@@ -112,10 +90,8 @@
                     cargar();
                 });
             }
-            
             actualizarFecha();
             
-            // Autenticar y cargar
             auth().then(() => {
                 verificarConexion();
                 cargarFiltros();
@@ -127,12 +103,9 @@
         
         function actualizarHora() {
             const el = document.getElementById('hora');
-            if (el) {
-                el.textContent = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-            }
+            if (el) el.textContent = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
         }
         
-        // ==================== AUTH ====================
         async function auth() {
             try {
                 console.log('🔑 Autenticando...');
@@ -152,15 +125,12 @@
             }
         }
         
-        // ==================== CONEXIÓN ====================
         async function verificarConexion() {
             try {
                 const r = await fetch(`${API}/`, {method: 'GET'});
                 const d = await r.json();
                 const badge = document.getElementById('modo-badge');
-                if (badge) {
-                    badge.textContent = d.modo === 'online' ? '🟢 Online' : '🟡 Offline';
-                }
+                if (badge) badge.textContent = d.modo === 'online' ? '🟢 Online' : '🟡 Offline';
                 console.log('📡 Modo:', d.modo);
             } catch (e) {
                 console.error('❌ Sin conexión:', e);
@@ -169,22 +139,16 @@
             }
         }
         
-        // ==================== FECHA ====================
         function actualizarFecha() {
             const f = new Date(fechaSel + 'T00:00:00');
             const display = document.getElementById('fecha-display');
             if (display) {
-                display.textContent = f.toLocaleDateString('es-ES', {
-                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                });
+                display.textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
             }
-            
             const hoy = new Date().toISOString().split('T')[0];
             const badge = document.getElementById('solo-lectura');
             const btn = document.getElementById('btn-guardar');
-            
             if (!badge || !btn) return;
-            
             if (fechaSel === hoy) {
                 badge.style.display = 'none';
                 btn.disabled = false;
@@ -210,95 +174,71 @@
             cargar();
         }
         
-        // ==================== FILTROS ====================
         async function cargarFiltros() {
             try {
                 console.log('📥 Cargando filtros...');
                 const r = await fetch(`${API}/alumnos`);
                 const data = await r.json();
-                
                 const grados = [...new Set(data.map(a => a.grado))].sort();
                 const secciones = [...new Set(data.map(a => a.seccion))].sort();
-                
                 const sg = document.getElementById('grado');
                 const ss = document.getElementById('seccion');
-                
                 if (sg) grados.forEach(g => sg.add(new Option(g, g)));
                 if (ss) secciones.forEach(s => ss.add(new Option('Sección ' + s, s)));
-                
                 console.log('✅ Filtros cargados');
             } catch (e) {
                 console.error('❌ Error filtros:', e);
             }
         }
         
-        // ==================== CARGAR ALUMNOS ====================
         async function cargar() {
             const g = document.getElementById('grado')?.value || '';
             const s = document.getElementById('seccion')?.value || '';
-            
-            // Mostrar mensaje de carga
             const lista = document.getElementById('lista');
             lista.innerHTML = '<div class="loading">⏳ Cargando alumnos...</div>';
-            
             try {
                 console.log('📥 Cargando alumnos...');
-                
-                // Alumnos
                 const params = new URLSearchParams();
                 if (g) params.append('grado', g);
                 if (s) params.append('seccion', s);
                 const al = await (await fetch(`${API}/alumnos?${params}`)).json();
-                
-                // Asistencia del día
                 const ap = new URLSearchParams();
                 ap.append('fecha', fechaSel);
                 if (g) ap.append('grado', g);
                 if (s) ap.append('seccion', s);
                 const asis = await (await fetch(`${API}/asistencia/hoy?${ap}`)).json();
-                
-                // Combinar
                 const asisMap = {};
-                (asis.asistencia || []).forEach(a => {
-                    asisMap[a.alumno_id || a.id] = a.estado;
-                });
-                
+                (asis.asistencia || []).forEach(a => { asisMap[a.alumno_id || a.id] = a.estado; });
                 alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
-                
                 renderizar();
                 contar();
-                
                 console.log('✅ Alumnos cargados:', alumnos.length);
             } catch (e) {
                 console.error('❌ Error cargando:', e);
                 mostrarError('Error al cargar alumnos: ' + e.message);
             }
         }
-        // ==================== RENDERIZAR ====================
+        
         function renderizar() {
             const container = document.getElementById('lista');
             if (!container) return;
-            
             if (alumnos.length === 0) {
                 container.innerHTML = '<div class="loading">No hay alumnos para mostrar</div>';
                 return;
             }
-            
             container.innerHTML = '';
-            
             alumnos.forEach((a, i) => {
                 const ini = (a.nombre[0] + (a.apellido_paterno || a.apellido || '')[0]).toUpperCase();
                 const card = document.createElement('div');
                 card.className = 'card' + (a.estado ? ' completo' : '');
                 card.style.animationDelay = (i * 0.03) + 's';
-                
                 let btns = '';
-                ['P','A','T','J'].forEach(cod => {
+                // ✅ CORRECCIÓN: Agregar 'E' al array de estados
+                ['P','A','T','J','E'].forEach(cod => {
                     const sel = a.estado === cod ? estados[cod].cls : '';
                     const dis = fechaSel > new Date().toISOString().split('T')[0] ? 'disabled' : '';
                     btns += `<button class="${sel}" ${dis} onclick="marcar(${a.id}, '${cod}', this)"><span>${estados[cod].icon}</span><small>${estados[cod].label}</small></button>`;
                 });
-                
                 card.innerHTML = `
                     <div class="card-header">
                         <div>
@@ -316,38 +256,41 @@
         function marcar(id, estado, btn) {
             const a = alumnos.find(x => x.id === id);
             if (!a) return;
-            
             a.estado = estado;
-            
             const card = btn.closest('.card');
             if (card) {
                 card.querySelectorAll('button').forEach(b => b.className = '');
                 btn.classList.add(estados[estado].cls);
                 card.classList.add('completo');
             }
-            
             contar();
             if (navigator.vibrate) navigator.vibrate(10);
         }
         
+        // ✅ CORRECCIÓN: Función contar() completa con J y E
         function contar() {
             const p = alumnos.filter(a => a.estado === 'P').length;
-            const a = alumnos.filter(a => a.estado === 'A').length;
+            const aus = alumnos.filter(a => a.estado === 'A').length;
             const t = alumnos.filter(a => a.estado === 'T').length;
+            const j = alumnos.filter(a => a.estado === 'J').length;
+            const e = alumnos.filter(a => a.estado === 'E').length;
             const pend = alumnos.filter(a => !a.estado).length;
             
             const cp = document.getElementById('c-p');
             const ca = document.getElementById('c-a');
             const ct = document.getElementById('c-t');
+            const cj = document.getElementById('c-j');
+            const ce = document.getElementById('c-e');
             const cpend = document.getElementById('c-pend');
             
             if (cp) cp.textContent = p;
-            if (ca) ca.textContent = a;
+            if (ca) ca.textContent = aus;
             if (ct) ct.textContent = t;
+            if (cj) cj.textContent = j;
+            if (ce) ce.textContent = e;
             if (cpend) cpend.textContent = pend;
         }
         
-        // ==================== GUARDAR ====================
         async function guardar() {
             const regs = alumnos.filter(a => a.estado).map(a => ({
                 alumno_id: a.id,
@@ -356,18 +299,14 @@
                 hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}),
                 user_id: user?.id || 0
             }));
-            
             if (!regs.length) {
                 tg.showAlert('No hay asistencia para guardar');
                 return;
             }
-            
-            // Deshabilitar botón mientras guarda
             const btn = document.getElementById('btn-guardar');
             const textoOriginal = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ Guardando...';
-            
             try {
                 const r = await fetch(`${API}/asistencia/registrar`, {
                     method: 'POST',
@@ -375,7 +314,6 @@
                     body: JSON.stringify({registros: regs, user_id: user?.id || 0})
                 });
                 const d = await r.json();
-                
                 const toast = document.getElementById('toast');
                 if (toast) {
                     toast.textContent = d.modo === 'online'
@@ -385,46 +323,39 @@
                     toast.classList.add('show');
                     setTimeout(() => toast.classList.remove('show'), 3000);
                 }
-                
                 console.log('✅ Guardado:', d);
             } catch (e) {
                 console.error('❌ Error guardando:', e);
                 tg.showAlert('Error al guardar: ' + e.message);
             } finally {
-                // Restaurar botón
                 const btn = document.getElementById('btn-guardar');
                 btn.disabled = false;
                 btn.textContent = '💾 Guardar';
             }
         }
         
-        // ==================== STATS ====================
         function stats() {
             const p = alumnos.filter(a => a.estado === 'P').length;
-            const a = alumnos.filter(a => a.estado === 'A').length;
+            const aus = alumnos.filter(a => a.estado === 'A').length;
             const t = alumnos.filter(a => a.estado === 'T').length;
             const j = alumnos.filter(a => a.estado === 'J').length;
+            const e = alumnos.filter(a => a.estado === 'E').length;
             const total = alumnos.length;
-            
             const fechaText = document.getElementById('fecha-display')?.textContent || fechaSel;
-            
-            alert(`📊 ${fechaText}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${a}\n⏰ Tardanzas: ${t}\n📝 Justificados: ${j}\n\nTotal: ${total} alumnos`);
+            alert(`📊 ${fechaText}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${aus}\n⏰ Tardanzas: ${t}\n📝 Justificados: ${j}\n🚌 Excursiones: ${e}\n\nTotal: ${total} alumnos`);
         }
         
-        // ==================== UTILS ====================
         function mostrarError(msg) {
             const lista = document.getElementById('lista');
             if (lista) lista.innerHTML = `<div class="error">${msg}</div>`;
         }
         
-        // ==================== INICIAR ====================
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
             init();
         }
     </script>
-    <!-- Registrar Service Worker para PWA -->
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')
@@ -432,6 +363,5 @@
           .catch(err => console.error('❌ SW error:', err));
       }
     </script>
-    
 </body>
 </html>
