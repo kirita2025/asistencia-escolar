@@ -1,12 +1,11 @@
 {
-  "name": "Gestor Proveedores",
-  "short_name": "Proveedores",
+  "name": "Control de Asistencia Escolar",
+  "short_name": "Asistencia",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2481cc",
-  "icons": [
-    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
-    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" }
-  ]
+  "theme_color": "#667eea",
+  "description": "App para maestros: toma de lista rápida y segura desde Telegram.",
+  "lang": "es",
+  "orientation": "portrait"
 }

@@ -233,7 +233,8 @@
                 card.className = 'card' + (a.estado ? ' completo' : '');
                 card.style.animationDelay = (i * 0.03) + 's';
                 let btns = '';
-                // ✅ CORRECCIÓN: Agregar 'E' al array de estados
+                // ✅ CORRECCIÓN: Agregar 'E' al array de estados.
+				<!-- FIX-2026-05-17: botones P/A/T/J/E + contar completo -->
                 ['P','A','T','J','E'].forEach(cod => {
                     const sel = a.estado === cod ? estados[cod].cls : '';
                     const dis = fechaSel > new Date().toISOString().split('T')[0] ? 'disabled' : '';

@@ -1,4 +1,5 @@
-const API = 'https://bot-proveedores-backend.onrender.com/api'; ////debo cambiar de nombre en Render.
+// ✅ URL del backend con prefijo /api para todos los endpoints
+const API = 'https://bot-proveedores-backend.onrender.com/api';
 const tg = window.Telegram.WebApp;
 let user = null, alumnos = [], fechaSel = new Date().toISOString().split('T')[0];
 
@@ -91,31 +92,41 @@ async function cargarFiltros() {
 }
 
 async function cargar() {
-    const g = document.getElementById('grado').value;
-    const s = document.getElementById('seccion').value;
+    const g = document.getElementById('grado')?.value || '';
+    const s = document.getElementById('seccion')?.value || '';
     
-    tg.showProgress();
+    // Mostrar loader en la UI
+    const lista = document.getElementById('lista');
+    lista.innerHTML = '<div class="loading">⏳ Cargando alumnos...</div>';
     
-    // Cargar alumnos
-    const params = new URLSearchParams();
-    if (g) params.append('grado', g);
-    if (s) params.append('seccion', s);
-    const al = await (await fetch(`${API}/alumnos?${params}`)).json();
-    
-    // Cargar asistencia del día
-    const ap = new URLSearchParams(); ap.append('fecha', fechaSel);
-    if (g) ap.append('grado', g); if (s) ap.append('seccion', s);
-    const asis = await (await fetch(`${API}/asistencia/hoy?${ap}`)).json();
-    
-    // Combinar
-    const asisMap = {};
-    (asis.asistencia || []).forEach(a => asisMap[a.alumno_id || a.id] = a.estado);
-    
-    alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
-    renderizar();
-    contar();
-    
-    tg.hideProgress();
+    try {
+        // 1. Alumnos
+        const params = new URLSearchParams();
+        if (g) params.append('grado', g);
+        if (s) params.append('seccion', s);
+        const al = await (await fetch(`${API}/alumnos?${params}`)).json();
+        
+        // 2. Asistencia del día
+        const ap = new URLSearchParams();
+        ap.append('fecha', fechaSel);
+        if (g) ap.append('grado', g);
+        if (s) ap.append('seccion', s);
+        const asis = await (await fetch(`${API}/asistencia/hoy?${ap}`)).json();
+        
+        // 3. Combinar datos
+        const asisMap = {};
+        (asis.asistencia || []).forEach(a => {
+            asisMap[a.alumno_id || a.id] = a.estado;
+        });
+        
+        alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
+        
+        renderizar();
+        contar();
+    } catch (e) {
+        console.error('❌ Error cargando:', e);
+        lista.innerHTML = `<div class="error">Error al cargar: ${e.message}</div>`;
+    }
 }
 
 function renderizar() {
@@ -172,33 +183,49 @@ function contar() {
 
 async function guardar() {
     const regs = alumnos.filter(a => a.estado).map(a => ({
-        alumno_id: a.id, fecha: fechaSel, estado: a.estado,
+        alumno_id: a.id,
+        fecha: fechaSel,
+        estado: a.estado,
         hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}),
-        user_id: user.id
+        user_id: user?.id || 0
     }));
     
-    if (!regs.length) { tg.showAlert('No hay asistencia para guardar'); return; }
+    if (!regs.length) {
+        tg.showAlert('⚠️ No hay asistencia para guardar');
+        return;
+    }
     
-    tg.showProgress();
+    // Feedback visual
+    const btn = document.getElementById('btn-guardar');
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Guardando...';
+    
     try {
         const r = await fetch(`${API}/asistencia/registrar`, {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({registros: regs, user_id: user.id})
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({registros: regs, user_id: user?.id || 0})
         });
         const d = await r.json();
         
         const toast = document.getElementById('toast');
-        toast.textContent = d.modo === 'online' 
-            ? `✅ Guardado en la nube (${d.registros} registros)`
-            : `💾 ${d.mensaje}`;
-        toast.style.background = d.modo === 'online' ? '#1a1a1a' : '#ff9800';
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
-        
+        if (toast) {
+            toast.textContent = d.success 
+                ? `✅ Guardado en la nube (${d.registros} registros)`
+                : `⚠️ ${d.message || 'Error al guardar'}`;
+            toast.style.background = d.success ? '#1a1a1a' : '#f44336';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
     } catch (e) {
-        tg.showAlert('Error: ' + e.message);
+        console.error('❌ Error guardando:', e);
+        tg.showAlert('Error al guardar: ' + e.message);
+    } finally {
+        // Restaurar botón
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
     }
-    tg.hideProgress();
 }
 
 function stats() {
