@@ -67,24 +67,18 @@ function renderizar(){
     card.className='card'+(a.estado?' completo':'');
     card.style.animationDelay=(i*0.03)+'s';
     
-    // Header de la tarjeta
     const header=document.createElement('div');
     header.className='card-header';
     header.innerHTML=`<div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div>`;
     
-    // Container de botones
     const estadosDiv=document.createElement('div');
     estadosDiv.className='estados';
     
-    // Crear botones con addEventListener (más robusto que onclick inline)
     ['P','A','T','J','E'].forEach(cod=>{
       const btn=document.createElement('button');
       btn.innerHTML=`<span>${estados[cod].icon}</span><small>${estados[cod].label}</small>`;
-      // Aplicar clase si ya está seleccionado
       if(a.estado===cod)btn.className=estados[cod].cls;
-      // Deshabilitar si es fecha futura
       if(fechaSel>new Date().toISOString().split('T')[0])btn.disabled=true;
-      // Evento click con addEventListener
       btn.addEventListener('click',()=>marcar(a.id,cod,btn));
       estadosDiv.appendChild(btn);
     });
