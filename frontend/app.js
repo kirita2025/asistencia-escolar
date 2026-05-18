@@ -16,7 +16,7 @@ const estados = {
 // ==================== INICIALIZACIÓN ====================
 function init() {
     console.log('🚀 Iniciando Mini App...');
-
+    
     try {
         tg.ready();
         tg.expand();
@@ -24,10 +24,10 @@ function init() {
     } catch (e) {
         console.log('⚠️ No estamos en Telegram: ' + e.message);
     }
-
+    
     actualizarHora();
     setInterval(actualizarHora, 1000);
-
+    
     // Event listeners - FECHA
     const inputFecha = document.getElementById('fecha-input');
     if (inputFecha) {
@@ -36,7 +36,7 @@ function init() {
         inputFecha.addEventListener('change', onFechaChange);
         console.log('✅ Fecha input configurado');
     }
-
+    
     // Botón HOY
     const btnHoy = document.getElementById('btn-hoy');
     if (btnHoy) {
@@ -48,7 +48,7 @@ function init() {
         }, {passive: false});
         console.log('✅ Botón Hoy configurado');
     }
-
+    
     // Botón CARGAR
     const btnCargar = document.getElementById('btn-cargar');
     if (btnCargar) {
@@ -60,23 +60,42 @@ function init() {
         }, {passive: false});
         console.log('✅ Botón Cargar configurado');
     }
-
+    
     // Botón GUARDAR
     const btnGuardar = document.getElementById('btn-guardar');
     if (btnGuardar) {
         btnGuardar.addEventListener('click', guardar);
         console.log('✅ Botón Guardar configurado');
     }
-
+    
     // Botón STATS
     const btnStats = document.getElementById('btn-stats');
     if (btnStats) {
         btnStats.addEventListener('click', stats);
         console.log('✅ Botón Stats configurado');
     }
-
+    
+    // 🔍 NUEVO: Búsqueda
+    const busquedaInput = document.getElementById('busqueda-input');
+    if (busquedaInput) {
+        busquedaInput.addEventListener('input', filtrarBusqueda);
+        console.log('✅ Búsqueda configurada');
+    }
+    
+    // ✅ NUEVO: "Marcar todos presentes"
+    const btnTodosP = document.getElementById('btn-todos-presentes');
+    if (btnTodosP) {
+        btnTodosP.addEventListener('click', marcarTodosPresentes);
+        btnTodosP.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            marcarTodosPresentes();
+        }, {passive: false});
+        console.log('✅ Botón Todos Presentes configurado');
+    }
+    
     actualizarFecha();
-
+    
     // Autenticar y cargar datos
     auth().then(() => {
         console.log('✅ Auth OK, verificando conexión...');
@@ -104,7 +123,7 @@ async function auth() {
         console.log('🔑 Autenticando...');
         const initData = tg.initData || '';
         console.log('initData length: ' + initData.length);
-
+        
         // Modo desarrollo: si no hay initData y estamos en localhost o preview de Vercel
         const hostname = window.location.hostname;
         if (!initData && (hostname === 'localhost' || hostname.includes('vercel.app'))) {
@@ -112,7 +131,7 @@ async function auth() {
             user = { id: 0, first_name: 'Dev' };
             return;
         }
-
+        
         const r = await fetch(API + '/auth', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -164,15 +183,15 @@ function actualizarFecha() {
     const f = new Date(fechaSel + 'T00:00:00');
     const display = document.getElementById('fecha-display');
     if (display) display.textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-
+    
     const hoyStr = new Date().toISOString().split('T')[0];
     const hoyDate = new Date(hoyStr + 'T00:00:00');
     const selDate = new Date(fechaSel + 'T00:00:00');
-
+    
     const badge = document.getElementById('solo-lectura');
     const btn = document.getElementById('btn-guardar');
     if (!badge || !btn) return;
-
+    
     if (fechaSel === hoyStr) {
         badge.style.display = 'none';
         btn.disabled = false;
@@ -226,31 +245,35 @@ async function cargar() {
     const s = document.getElementById('seccion')?.value || '';
     const lista = document.getElementById('lista');
     lista.innerHTML = '<div class="loading">⏳ Cargando alumnos...</div>';
-
+    
+    // Mostrar barra de búsqueda
+    const busquedaContainer = document.getElementById('busqueda-container');
+    if (busquedaContainer) busquedaContainer.style.display = 'flex';
+    
     try {
         console.log('📥 Cargando alumnos... grado=' + g + ' seccion=' + s);
         const params = new URLSearchParams();
         if (g) params.append('grado', g);
         if (s) params.append('seccion', s);
-
+        
         console.log('URL alumnos: ' + API + '/alumnos?' + params.toString());
         const al = await (await fetch(API + '/alumnos?' + params.toString())).json();
         console.log('✅ Alumnos recibidos: ' + al.length);
-
+        
         const ap = new URLSearchParams();
         ap.append('fecha', fechaSel);
         if (g) ap.append('grado', g);
         if (s) ap.append('seccion', s);
-
+        
         console.log('URL asistencia: ' + API + '/asistencia/hoy?' + ap.toString());
         const asis = await (await fetch(API + '/asistencia/hoy?' + ap.toString())).json();
         console.log('✅ Asistencia recibida: ' + (asis.asistencia || []).length + ' registros');
-
+        
         const asisMap = {};
         (asis.asistencia || []).forEach(a => { 
             asisMap[a.alumno_id || a.id] = a.estado; 
         });
-
+        
         alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
         renderizar();
         contar();
@@ -259,6 +282,68 @@ async function cargar() {
         console.log('❌ Error cargando: ' + e.message);
         mostrarError('Error: ' + e.message);
     }
+}
+
+// 🔍 NUEVO: Filtrar alumnos por búsqueda
+function filtrarBusqueda() {
+    const texto = document.getElementById('busqueda-input').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('.card');
+    
+    cards.forEach(card => {
+        const nombre = card.querySelector('h3')?.textContent.toLowerCase() || '';
+        const matricula = card.querySelector('span')?.textContent.toLowerCase() || '';
+        
+        if (texto === '' || nombre.includes(texto) || matricula.includes(texto)) {
+            card.style.display = '';
+            card.classList.remove('destacado');
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Destacar coincidencias si hay pocos resultados
+    if (texto.length > 0) {
+        const visibles = document.querySelectorAll('.card[style=""]');
+        if (visibles.length === 1) {
+            visibles[0].classList.add('destacado');
+        }
+    }
+}
+
+// ✅ NUEVO: Marcar todos como presentes
+function marcarTodosPresentes() {
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const hoyDate = new Date(hoyStr + 'T00:00:00');
+    const selDate = new Date(fechaSel + 'T00:00:00');
+    
+    if (selDate > hoyDate) {
+        tg.showAlert('No se puede marcar asistencia futura');
+        return;
+    }
+    
+    let marcados = 0;
+    alumnos.forEach(a => {
+        if (!a.estado) {
+            a.estado = 'P';
+            marcados++;
+        }
+    });
+    
+    // Re-renderizar para mostrar los cambios
+    renderizar();
+    contar();
+    
+    // Feedback
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.textContent = '✅ ' + marcados + ' alumnos marcados presentes';
+        toast.style.background = '#4caf50';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+    
+    if (navigator.vibrate) navigator.vibrate(20);
+    console.log('✅ Marcados ' + marcados + ' alumnos como presentes');
 }
 
 function renderizar() {
@@ -274,43 +359,47 @@ function renderizar() {
         const card = document.createElement('div');
         card.className = 'card' + (a.estado ? ' completo' : '');
         card.style.animationDelay = (i * 0.05) + 's';
-
+        
         const header = document.createElement('div');
         header.className = 'card-header';
         header.innerHTML = '<div><h3>' + a.nombre + ' ' + (a.apellido_paterno||'') + ' ' + (a.apellido_materno||'') + '</h3><span>Mat: ' + a.matricula + ' · ' + a.grado + ' ' + a.seccion + '</span></div><div class="foto">' + ini + '</div>';
-
+        
         const estadosDiv = document.createElement('div');
         estadosDiv.className = 'estados';
-
+        
         ['P','A','T','J','E'].forEach(cod => {
             const btn = document.createElement('button');
             btn.innerHTML = '<span>' + estados[cod].icon + '</span><small>' + estados[cod].label + '</small>';
             btn.className = a.estado === cod ? estados[cod].cls : '';
-
+            
             const hoyStr = new Date().toISOString().split('T')[0];
             const hoyDate = new Date(hoyStr + 'T00:00:00');
             const selDate = new Date(fechaSel + 'T00:00:00');
             if (selDate > hoyDate) btn.disabled = true;
-
+            
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 marcar(a.id, cod, this);
             });
-
+            
             btn.addEventListener('touchend', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 marcar(a.id, cod, this);
             }, {passive: false});
-
+            
             estadosDiv.appendChild(btn);
         });
-
+        
         card.appendChild(header);
         card.appendChild(estadosDiv);
         container.appendChild(card);
     });
+    
+    // Re-aplicar filtro de búsqueda si hay texto
+    const busquedaTexto = document.getElementById('busqueda-input')?.value || '';
+    if (busquedaTexto) filtrarBusqueda();
 }
 
 function marcar(id, estado, btn) {
@@ -351,17 +440,17 @@ async function guardar() {
         hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}),
         user_id: user?.id || 0
     }));
-
+    
     if (!regs.length) { 
         tg.showAlert('No hay asistencia para guardar'); 
         return; 
     }
-
+    
     const btn = document.getElementById('btn-guardar');
     const orig = btn.textContent;
     btn.disabled = true;
     btn.textContent = '⏳ Guardando...';
-
+    
     try {
         console.log('💾 Guardando ' + regs.length + ' registros...');
         const r = await fetch(API + '/asistencia/registrar', {
