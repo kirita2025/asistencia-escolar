@@ -13,6 +13,16 @@ const estados = {
     E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
 };
 
+// ==================== DEBUG ====================
+function log(msg) {
+    console.log(msg);
+    const debugEl = document.getElementById('debug-log');
+    if (debugEl) {
+        debugEl.style.display = 'block';
+        debugEl.innerHTML += msg + '<br>';
+        debugEl.scrollTop = debugEl.scrollHeight;
+    }
+}
 
 // ==================== INICIALIZACIÓN ====================
 function init() {

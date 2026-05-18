@@ -47,7 +47,7 @@
             <button class="btn-stats" id="btn-stats">📊 Stats</button>
         </div>
         <div class="toast" id="toast"></div>
-        
+        <div id="debug-log" style="position:fixed;bottom:80px;left:10px;right:10px;background:rgba(0,0,0,0.8);color:#0f0;font-family:monospace;font-size:10px;padding:8px;border-radius:8px;max-height:100px;overflow-y:auto;z-index:9999;display:none;"></div>
     </div>
 
     <script src="/app.js"></script>
