@@ -1,0 +1,9 @@
+{
+  "routes": [
+    { "src": "/style.css", "dest": "/style.css", "headers": { "Content-Type": "text/css; charset=utf-8", "Cache-Control": "public, max-age=0, must-revalidate" } },
+    { "src": "/app.js", "dest": "/app.js", "headers": { "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "public, max-age=0, must-revalidate" } },
+    { "src": "/sw.js", "dest": "/sw.js", "headers": { "Content-Type": "application/javascript; charset=utf-8", "Cache-Control": "public, max-age=0, must-revalidate" } },
+    { "src": "/manifest.json", "dest": "/manifest.json", "headers": { "Content-Type": "application/json; charset=utf-8" } },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
