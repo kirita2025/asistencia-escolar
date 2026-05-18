@@ -1,390 +1,108 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Control de Asistencia</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
-        .app { max-width: 430px; margin: 0 auto; min-height: 100vh; position: relative; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px 16px; }
-        .status-bar { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 8px; }
-        .modo-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; }
-        .header h1 { font-size: 1.1rem; margin-bottom: 2px; }
-        .fecha { font-size: 0.8rem; opacity: 0.9; text-transform: capitalize; }
-        .fecha-selector { background: white; padding: 12px 16px; border-bottom: 1px solid #e8e8e8; }
-        .fecha-selector label { font-size: 0.7rem; font-weight: 700; color: #888; text-transform: uppercase; display: block; margin-bottom: 6px; }
-        .fecha-row { display: flex; gap: 8px; }
-        .fecha-row input { flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.95rem; }
-        .btn-hoy { padding: 10px 14px; background: #667eea; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; }
-        .solo-lectura { background: #fff3e0; color: #e65100; padding: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; text-align: center; margin-top: 8px; display: none; }
-        .filtros { display: flex; gap: 8px; padding: 10px 16px; background: white; border-bottom: 1px solid #e8e8e8; }
-        .filtros select { flex: 1; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.9rem; }
-        .btn-cargar { padding: 10px 14px; background: #667eea; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
-        .contador { display: flex; justify-content: space-around; padding: 10px; background: white; margin-top: 6px; border-bottom: 1px solid #e8e8e8; }
-        .contador div { text-align: center; }
-        .num { font-size: 1.4rem; font-weight: 700; display: block; }
-        .label { font-size: 0.65rem; color: #888; text-transform: uppercase; }
-        .presente { color: #4caf50; } .ausente { color: #f44336; } .tardanza { color: #ff9800; } .pendiente { color: #9e9e9e; } .justificado { color: #2196f3; } .excursion { color: #9c27b0; }
-        .lista { padding: 8px 16px; padding-bottom: 100px; }
-        .card { background: white; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); opacity: 0.6; transition: opacity 0.2s; }
-        .card.completo { opacity: 1; }
-        .card-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .card-header h3 { font-size: 0.95rem; font-weight: 700; }
-        .card-header span { font-size: 0.78rem; color: #888; }
-        .foto { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
-        .estados { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-        .estados button { padding: 10px 2px; border: 2px solid #e8e8e8; border-radius: 10px; background: white; font-size: 0.7rem; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; touch-action: manipulation; user-select: none; }
-        .estados button:active { transform: scale(0.95); transition: transform 0.1s ease; }
-        .estados button.sel-p { background: #4caf50; color: white; border-color: #4caf50; }
-        .estados button.sel-a { background: #f44336; color: white; border-color: #f44336; }
-        .estados button.sel-t { background: #ff9800; color: white; border-color: #ff9800; }
-        .estados button.sel-j { background: #2196f3; color: white; border-color: #2196f3; }
-        .estados button.sel-e { background: #9c27b0; color: white; border-color: #9c27b0; }
-        .estados button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .acciones { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e8e8e8; padding: 12px 16px 24px; display: flex; gap: 10px; max-width: 430px; margin: 0 auto; }
-        .acciones button { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
-        .btn-guardar { background: linear-gradient(135deg, #4caf50, #45a049); color: white; }
-        .btn-guardar:disabled { background: #ccc; }
-        .btn-stats { background: #f0f0f0; color: #555; }
-        .toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 25px; font-weight: 600; opacity: 0; transition: all 0.3s; z-index: 1000; }
-        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-        .loading { text-align: center; padding: 40px; color: #888; }
-        .error { text-align: center; padding: 40px; color: #f44336; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; connect-src 'self' https://*.onrender.com https://*.supabase.co; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org;">
+<title>Control de Asistencia</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5}
+.app{max-width:430px;margin:0 auto;min-height:100vh;position:relative}
+.header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:12px 16px 16px}
+.status-bar{display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:8px}
+.modo-badge{background:rgba(255,255,255,.2);padding:2px 8px;border-radius:10px}
+.header h1{font-size:1.1rem;margin-bottom:2px}
+.fecha{font-size:.8rem;opacity:.9;text-transform:capitalize}
+.fecha-selector{background:#fff;padding:12px 16px;border-bottom:1px solid #e8e8e8}
+.fecha-selector label{font-size:.7rem;font-weight:700;color:#888;text-transform:uppercase;display:block;margin-bottom:6px}
+.fecha-row{display:flex;gap:8px}
+.fecha-row input{flex:1;padding:10px;border:2px solid #e0e0e0;border-radius:10px;font-size:.95rem}
+.btn-hoy{padding:10px 14px;background:#667eea;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer}
+.solo-lectura{background:#fff3e0;color:#e65100;padding:8px;border-radius:8px;font-size:.8rem;font-weight:600;text-align:center;margin-top:8px;display:none}
+.filtros{display:flex;gap:8px;padding:10px 16px;background:#fff;border-bottom:1px solid #e8e8e8}
+.filtros select{flex:1;padding:10px 8px;border:2px solid #e0e0e0;border-radius:10px;font-size:.9rem}
+.btn-cargar{padding:10px 14px;background:#667eea;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer}
+.contador{display:flex;justify-content:space-around;padding:10px;background:#fff;margin-top:6px;border-bottom:1px solid #e8e8e8}
+.contador div{text-align:center}
+.num{font-size:1.4rem;font-weight:700;display:block}
+.label{font-size:.65rem;color:#888;text-transform:uppercase}
+.presente{color:#4caf50}.ausente{color:#f44336}.tardanza{color:#ff9800}.pendiente{color:#9e9e9e}.justificado{color:#2196f3}.excursion{color:#9c27b0}
+.lista{padding:8px 16px;padding-bottom:100px}
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);opacity:.6;transition:opacity .2s}
+.card.completo{opacity:1}
+.card-header{display:flex;justify-content:space-between;margin-bottom:10px}
+.card-header h3{font-size:.95rem;font-weight:700}
+.card-header span{font-size:.78rem;color:#888}
+.foto{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem}
+.estados{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.estados button{padding:10px 2px;border:2px solid #e8e8e8;border-radius:10px;background:#fff;font-size:.7rem;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;touch-action:manipulation;user-select:none}
+.estados button:active{transform:scale(.95);transition:transform .1s ease}
+.estados button.sel-p{background:#4caf50;color:#fff;border-color:#4caf50}
+.estados button.sel-a{background:#f44336;color:#fff;border-color:#f44336}
+.estados button.sel-t{background:#ff9800;color:#fff;border-color:#ff9800}
+.estados button.sel-j{background:#2196f3;color:#fff;border-color:#2196f3}
+.estados button.sel-e{background:#9c27b0;color:#fff;border-color:#9c27b0}
+.estados button:disabled{opacity:.5;cursor:not-allowed}
+.acciones{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e8e8e8;padding:12px 16px 24px;display:flex;gap:10px;max-width:430px;margin:0 auto}
+.acciones button{flex:1;padding:14px;border:none;border-radius:12px;font-size:.9rem;font-weight:700;cursor:pointer}
+.btn-guardar{background:linear-gradient(135deg,#4caf50,#45a049);color:#fff}
+.btn-guardar:disabled{background:#ccc}
+.btn-stats{background:#f0f0f0;color:#555}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-100px);background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:25px;font-weight:600;opacity:0;transition:all .3s;z-index:1000}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.loading{text-align:center;padding:40px;color:#888}
+.error{text-align:center;padding:40px;color:#f44336}
+</style>
 </head>
 <body>
-    <div class="app">
-        <header class="header">
-            <div class="status-bar">
-                <span id="hora">--:--</span>
-                <span id="modo-badge" class="modo-badge">🟡 Conectando...</span>
-            </div>
-            <h1>📚 Control de Asistencia</h1>
-            <div class="fecha" id="fecha-display">Cargando...</div>
-        </header>
-        <div class="fecha-selector">
-            <label>📅 Fecha de asistencia</label>
-            <div class="fecha-row">
-                <input type="date" id="fecha-input">
-                <button id="btn-hoy" class="btn-hoy">Hoy</button>
-            </div>
-            <div class="solo-lectura" id="solo-lectura">👁️ Solo lectura</div>
-        </div>
-        <div class="filtros">
-            <select id="grado"><option value="">Todos los grados</option></select>
-            <select id="seccion"><option value="">Todas</option></select>
-            <button id="btn-cargar" class="btn-cargar">Cargar</button>
-        </div>
-        <div class="contador">
-            <div><span class="num presente" id="c-p">0</span><span class="label">Presentes</span></div>
-            <div><span class="num ausente" id="c-a">0</span><span class="label">Ausentes</span></div>
-            <div><span class="num tardanza" id="c-t">0</span><span class="label">Tardanzas</span></div>
-            <div><span class="num justificado" id="c-j">0</span><span class="label">Justificado</span></div>
-            <div><span class="num excursion" id="c-e">0</span><span class="label">Excursión</span></div>
-            <div><span class="num pendiente" id="c-pend">0</span><span class="label">Pendientes</span></div>
-        </div>
-        <div class="lista" id="lista"><div class="loading">Seleccioná grado/sección y tocá "Cargar"</div></div>
-        <div class="acciones">
-            <button id="btn-guardar" class="btn-guardar">💾 Guardar</button>
-            <button id="btn-stats" class="btn-stats">📊 Stats</button>
-        </div>
-        <div class="toast" id="toast"></div>
-    </div>
+<div class="app">
+<header class="header"><div class="status-bar"><span id="hora">--:--</span><span id="modo-badge" class="modo-badge">🟡 Conectando...</span></div><h1>📚 Control de Asistencia</h1><div class="fecha" id="fecha-display">Cargando...</div></header>
+<div class="fecha-selector"><label>📅 Fecha</label><div class="fecha-row"><input type="date" id="fecha-input"><button id="btn-hoy" class="btn-hoy">Hoy</button></div><div class="solo-lectura" id="solo-lectura">👁️ Solo lectura</div></div>
+<div class="filtros"><select id="grado"><option value="">Todos</option></select><select id="seccion"><option value="">Todas</option></select><button id="btn-cargar" class="btn-cargar">Cargar</button></div>
+<div class="contador"><div><span class="num presente" id="c-p">0</span><span class="label">Presentes</span></div><div><span class="num ausente" id="c-a">0</span><span class="label">Ausentes</span></div><div><span class="num tardanza" id="c-t">0</span><span class="label">Tardanzas</span></div><div><span class="num justificado" id="c-j">0</span><span class="label">Justificado</span></div><div><span class="num excursion" id="c-e">0</span><span class="label">Excursión</span></div><div><span class="num pendiente" id="c-pend">0</span><span class="label">Pendientes</span></div></div>
+<div class="lista" id="lista"><div class="loading">⏳ Seleccioná y tocá "Cargar"</div></div>
+<div class="acciones"><button id="btn-guardar" class="btn-guardar">💾 Guardar</button><button id="btn-stats" class="btn-stats">📊 Stats</button></div>
+<div class="toast" id="toast"></div>
+</div>
+<script>
+// ✅ TEST INMEDIATO: Si esto no aparece en consola, el archivo no se parseó
+console.log('🔥 ANDROID TEST: Script iniciado');
+document.addEventListener('DOMContentLoaded',function(){console.log('🔥 ANDROID TEST: DOMContentLoaded');document.getElementById('lista').innerHTML='<div style="color:green;font-weight:bold">✅ HTML parseado correctamente en Android</div>';});
 
-    <script>
-        // ==================== CONFIGURACIÓN ====================
-        const API = 'https://bot-proveedores-backend.onrender.com/api';
-        const tg = window.Telegram.WebApp;
-        let user = null;
-        let alumnos = [];
-        let fechaSel = new Date().toISOString().split('T')[0];
-        
-        const estados = {
-            P: { icon: '✅', label: 'Presente', cls: 'sel-p' },
-            A: { icon: '', label: 'Ausente', cls: 'sel-a' },
-            T: { icon: '', label: 'Tardanza', cls: 'sel-t' },
-            J: { icon: '📝', label: 'Justificado', cls: 'sel-j' },
-            E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
-        };
-        
-        // ==================== LÓGICA PRINCIPAL ====================
-        
-        async function init() {
-            console.log('🚀 Iniciando...');
-            tg.ready();
-            tg.expand();
-            
-            actualizarHora();
-            setInterval(actualizarHora, 1000);
-            
-            // 1. Bind Eventos (Sin onclick inline)
-            document.getElementById('btn-hoy').addEventListener('click', irAHoy);
-            document.getElementById('btn-cargar').addEventListener('click', cargar);
-            document.getElementById('btn-guardar').addEventListener('click', guardar);
-            document.getElementById('btn-stats').addEventListener('click', stats);
-            
-            // 2. Evento Fecha (input + change para compatibilidad total)
-            const inputFecha = document.getElementById('fecha-input');
-            if (inputFecha) {
-                inputFecha.value = fechaSel;
-                inputFecha.addEventListener('input', (e) => { fechaSel = e.target.value; actualizarFecha(); });
-                inputFecha.addEventListener('change', (e) => { fechaSel = e.target.value; actualizarFecha(); cargar(); });
-            }
-            
-            actualizarFecha();
-            
-            try {
-                await auth();
-                verificarConexion();
-                cargarFiltros();
-            } catch (err) {
-                console.error('Error init:', err);
-                mostrarError('Error de conexión.');
-            }
-        }
-        
-        function actualizarHora() {
-            const el = document.getElementById('hora');
-            if (el) el.textContent = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-        }
-        
-        async function auth() {
-            const r = await fetch(`${API}/auth`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({initData: tg.initData || ''})
-            });
-            const d = await r.json();
-            if (!d.success) throw new Error('No auth');
-            user = d.user;
-            console.log('✅ Autenticado:', user.first_name);
-        }
-        
-        async function verificarConexion() {
-            try {
-                const r = await fetch(`${API}/`, {method: 'GET'});
-                const d = await r.json();
-                const badge = document.getElementById('modo-badge');
-                if (badge) badge.textContent = d.modo === 'online' ? '🟢 Online' : '🟡 Offline';
-            } catch (e) {
-                console.error('❌ Sin conexión:', e);
-                const badge = document.getElementById('modo-badge');
-                if (badge) badge.textContent = '🔴 Sin conexión';
-            }
-        }
-        
-        function actualizarFecha() {
-            const f = new Date(fechaSel + 'T00:00:00');
-            const display = document.getElementById('fecha-display');
-            if (display) display.textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-            
-            const hoy = new Date().toISOString().split('T')[0];
-            const badge = document.getElementById('solo-lectura');
-            const btn = document.getElementById('btn-guardar');
-            if (!badge || !btn) return;
-            
-            if (fechaSel === hoy) {
-                badge.style.display = 'none';
-                btn.disabled = false;
-                btn.textContent = '💾 Guardar';
-            } else if (fechaSel < hoy) {
-                badge.style.display = 'block';
-                badge.textContent = '👁️ Cargando asistencia histórica';
-                btn.disabled = false;
-                btn.textContent = '💾 Cargar atrasado';
-            } else {
-                badge.style.display = 'block';
-                badge.textContent = '🔒 No se puede registrar asistencia futura';
-                btn.disabled = true;
-                btn.textContent = '🔒 Bloqueado';
-            }
-        }
-        
-        function irAHoy() {
-            fechaSel = new Date().toISOString().split('T')[0];
-            document.getElementById('fecha-input').value = fechaSel;
-            actualizarFecha();
-            cargar();
-        }
-        
-        async function cargarFiltros() {
-            try {
-                const r = await fetch(`${API}/alumnos`);
-                const data = await r.json();
-                const grados = [...new Set(data.map(a => a.grado))].sort();
-                const secciones = [...new Set(data.map(a => a.seccion))].sort();
-                const sg = document.getElementById('grado');
-                const ss = document.getElementById('seccion');
-                if (sg) grados.forEach(g => sg.add(new Option(g, g)));
-                if (ss) secciones.forEach(s => ss.add(new Option('Sección ' + s, s)));
-            } catch (e) { console.error('❌ Error filtros:', e); }
-        }
-        
-        async function cargar() {
-            const g = document.getElementById('grado')?.value || '';
-            const s = document.getElementById('seccion')?.value || '';
-            const lista = document.getElementById('lista');
-            lista.innerHTML = '<div class="loading">⏳ Cargando...</div>';
-            try {
-                const params = new URLSearchParams();
-                if (g) params.append('grado', g);
-                if (s) params.append('seccion', s);
-                const al = await (await fetch(`${API}/alumnos?${params}`)).json();
-                
-                const ap = new URLSearchParams();
-                ap.append('fecha', fechaSel);
-                if (g) ap.append('grado', g);
-                if (s) ap.append('seccion', s);
-                const asis = await (await fetch(`${API}/asistencia/hoy?${ap}`)).json();
-                
-                const asisMap = {};
-                (asis.asistencia || []).forEach(a => { asisMap[a.alumno_id || a.id] = a.estado; });
-                alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
-                
-                renderizar();
-                contar();
-            } catch (e) {
-                console.error('❌ Error cargando:', e);
-                mostrarError('Error: ' + e.message);
-            }
-        }
-        
-        // ✅ RENDERIZADO CON ADD EVENT LISTENER (DOM PURIFICADO)
-        function renderizar() {
-            const container = document.getElementById('lista');
-            if (!container) return;
-            if (alumnos.length === 0) {
-                container.innerHTML = '<div class="loading">No hay alumnos</div>';
-                return;
-            }
-            container.innerHTML = '';
-            
-            alumnos.forEach((a, i) => {
-                const ini = (a.nombre[0] + (a.apellido_paterno || a.apellido || '')[0]).toUpperCase();
-                const card = document.createElement('div');
-                card.className = 'card' + (a.estado ? ' completo' : '');
-                
-                const header = document.createElement('div');
-                header.className = 'card-header';
-                header.innerHTML = `<div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div>`;
-                
-                const estadosDiv = document.createElement('div');
-                estadosDiv.className = 'estados';
-                
-                ['P','A','T','J','E'].forEach(cod => {
-                    const btn = document.createElement('button');
-                    btn.innerHTML = `<span>${estados[cod].icon}</span><small>${estados[cod].label}</small>`;
-                    btn.className = a.estado === cod ? estados[cod].cls : '';
-                    if (fechaSel > new Date().toISOString().split('T')[0]) btn.disabled = true;
-                    
-                    // ✅ UNIFICADO: Click funciona en ambos
-                    btn.addEventListener('click', () => {
-                        marcar(a.id, cod, btn);
-                    });
-                    
-                    estadosDiv.appendChild(btn);
-                });
-                
-                card.appendChild(header);
-                card.appendChild(estadosDiv);
-                container.appendChild(card);
-            });
-        }
-        
-        // ✅ MARCAR GLOBAL PARA ACCESO SEGURO
-        window.marcar = function(id, estado, btn) {
-            const a = alumnos.find(x => x.id === id);
-            if (!a) return;
-            
-            a.estado = estado;
-            
-            const card = btn.closest('.card');
-            if (card) {
-                card.querySelectorAll('button').forEach(b => b.className = '');
-                btn.classList.add(estados[estado].cls);
-                card.classList.add('completo');
-            }
-            
-            contar();
-            if (navigator.vibrate) navigator.vibrate(10);
-        };
-        
-        function contar() {
-            const p = alumnos.filter(a => a.estado === 'P').length;
-            const au = alumnos.filter(a => a.estado === 'A').length;
-            const t = alumnos.filter(a => a.estado === 'T').length;
-            const j = alumnos.filter(a => a.estado === 'J').length;
-            const e = alumnos.filter(a => a.estado === 'E').length;
-            const pend = alumnos.filter(a => !a.estado).length;
-            
-            const map = {'c-p':p, 'c-a':au, 'c-t':t, 'c-j':j, 'c-e':e, 'c-pend':pend};
-            for (const [id, val] of Object.entries(map)) {
-                const el = document.getElementById(id);
-                if (el) el.textContent = val;
-            }
-        }
-        
-        async function guardar() {
-            const regs = alumnos.filter(a => a.estado).map(a => ({
-                alumno_id: a.id, fecha: fechaSel, estado: a.estado,
-                hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}),
-                user_id: user?.id || 0
-            }));
-            if (!regs.length) { tg.showAlert('No hay asistencia para guardar'); return; }
-            
-            const btn = document.getElementById('btn-guardar');
-            const orig = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '⏳ Guardando...';
-            
-            try {
-                const r = await fetch(`${API}/asistencia/registrar`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({registros: regs, user_id: user?.id || 0})
-                });
-                const d = await r.json();
-                const toast = document.getElementById('toast');
-                if (toast) {
-                    toast.textContent = d.modo === 'online' ? `✅ Guardado (${d.registros} registros)` : `💾 ${d.mensaje||'Guardado'}`;
-                    toast.style.background = d.modo === 'online' ? '#1a1a1a' : '#ff9800';
-                    toast.classList.add('show');
-                    setTimeout(() => toast.classList.remove('show'), 3000);
-                }
-            } catch (e) {
-                console.error(' Error guardando:', e);
-                tg.showAlert('Error: ' + e.message);
-            } finally {
-                const btn = document.getElementById('btn-guardar');
-                btn.disabled = false;
-                btn.textContent = orig;
-            }
-        }
-        
-        function stats() {
-            const p = alumnos.filter(a => a.estado === 'P').length;
-            const au = alumnos.filter(a => a.estado === 'A').length;
-            const t = alumnos.filter(a => a.estado === 'T').length;
-            const j = alumnos.filter(a => a.estado === 'J').length;
-            const e = alumnos.filter(a => a.estado === 'E').length;
-            const total = alumnos.length;
-            const ft = document.getElementById('fecha-display')?.textContent || fechaSel;
-            alert(` ${ft}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${au}\n Tardanzas: ${t}\n Justificados: ${j}\n🚌 Excursiones: ${e}\n\nTotal: ${total} alumnos`);
-        }
-        
-        function mostrarError(msg) {
-            const lista = document.getElementById('lista');
-            if (lista) lista.innerHTML = `<div class="error">${msg}</div>`;
-        }
-        
-        // ==================== INICIO ====================
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
-        }
-    </script>
+const API='https://bot-proveedores-backend.onrender.com/api';
+const tg=window.Telegram.WebApp;
+let user=null,alumnos=[],fechaSel=new Date().toISOString().split('T')[0];
+const estados={P:{icon:'✅',label:'Presente',cls:'sel-p'},A:{icon:'',label:'Ausente',cls:'sel-a'},T:{icon:'',label:'Tardanza',cls:'sel-t'},J:{icon:'📝',label:'Justificado',cls:'sel-j'},E:{icon:'🚌',label:'Excursión',cls:'sel-e'}};
+
+async function init(){
+console.log('🚀 Init...');
+tg.ready();tg.expand();
+actualizarHora();setInterval(actualizarHora,1e3);
+document.getElementById('btn-hoy').addEventListener('click',irAHoy);
+document.getElementById('btn-cargar').addEventListener('click',cargar);
+document.getElementById('btn-guardar').addEventListener('click',guardar);
+document.getElementById('btn-stats').addEventListener('click',stats);
+const f=document.getElementById('fecha-input');
+if(f){f.value=fechaSel;f.addEventListener('input',e=>{fechaSel=e.target.value;actualizarFecha()});f.addEventListener('change',e=>{fechaSel=e.target.value;actualizarFecha();cargar()})}
+actualizarFecha();
+try{await auth();verificarConexion();cargarFiltros();console.log('✅ Init OK')}catch(e){console.error('❌ Init:',e);mostrarError('Error de conexión')}}
+
+function actualizarHora(){const e=document.getElementById('hora');if(e)e.textContent=new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}
+async function auth(){const r=await fetch(API+'/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({initData:tg.initData||''})}),d=await r.json();if(!d.success)throw new Error('No auth');user=d.user;console.log('✅ Auth:',user.first_name)}
+async function verificarConexion(){try{const r=await fetch(API+'/',{method:'GET'}),d=await r.json(),b=document.getElementById('modo-badge');if(b)b.textContent=d.modo==='online'?'🟢 Online':'🟡 Offline'}catch(e){console.error('❌ Conexión:',e)}}
+function actualizarFecha(){const f=new Date(fechaSel+'T00:00:00'),d=document.getElementById('fecha-display');if(d)d.textContent=f.toLocaleDateString('es-ES',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const h=new Date().toISOString().split('T')[0],b=document.getElementById('solo-lectura'),g=document.getElementById('btn-guardar');if(!b||!g)return;if(fechaSel===h){b.style.display='none';g.disabled=false;g.textContent='💾 Guardar'}else if(fechaSel<h){b.style.display='block';b.textContent='👁️ Histórica';g.disabled=false;g.textContent='💾 Cargar'}else{b.style.display='block';b.textContent='🔒 Futuro';g.disabled=true;g.textContent='🔒 Bloqueado'}}
+function irAHoy(){fechaSel=new Date().toISOString().split('T')[0];document.getElementById('fecha-input').value=fechaSel;actualizarFecha();cargar()}
+async function cargarFiltros(){try{const r=await fetch(API+'/alumnos'),data=await r.json(),grados=[...new Set(data.map(a=>a.grado))].sort(),secciones=[...new Set(data.map(a=>a.seccion))].sort();if(document.getElementById('grado'))grados.forEach(g=>document.getElementById('grado').add(new Option(g,g)));if(document.getElementById('seccion'))secciones.forEach(s=>document.getElementById('seccion').add(new Option('Sección '+s,s)))}catch(e){console.error('❌ Filtros:',e)}}
+async function cargar(){const g=document.getElementById('grado')?.value||'',s=document.getElementById('seccion')?.value||'',lista=document.getElementById('lista');lista.innerHTML='<div class="loading">⏳ Cargando...</div>';try{const params=new URLSearchParams();if(g)params.append('grado',g);if(s)params.append('seccion',s);const al=await(await fetch(API+'/alumnos?'+params)).json(),ap=new URLSearchParams();ap.append('fecha',fechaSel);if(g)ap.append('grado',g);if(s)ap.append('seccion',s);const asis=await(await fetch(API+'/asistencia/hoy?'+ap)).json(),asisMap={};(asis.asistencia||[]).forEach(a=>{asisMap[a.alumno_id||a.id]=a.estado});alumnos=al.map(a=>({...a,estado:asisMap[a.id]||null}));renderizar();contar();console.log('✅ Cargados:',alumnos.length)}catch(e){console.error('❌ Cargar:',e);mostrarError('Error: '+e.message)}}
+function renderizar(){const c=document.getElementById('lista');if(!c)return;if(alumnos.length===0){c.innerHTML='<div class="loading">Sin alumnos</div>';return}c.innerHTML='';alumnos.forEach((a,i)=>{const ini=(a.nombre[0]+(a.apellido_paterno||a.apellido||'')[0]).toUpperCase(),card=document.createElement('div');card.className='card'+(a.estado?' completo':'');const header=document.createElement('div');header.className='card-header';header.innerHTML='<div><h3>'+a.nombre+' '+(a.apellido_paterno||'')+' '+(a.apellido_materno||'')+'</h3><span>Mat: '+a.matricula+' · '+a.grado+' '+a.seccion+'</span></div><div class="foto">'+ini+'</div>';const estadosDiv=document.createElement('div');estadosDiv.className='estados';['P','A','T','J','E'].forEach(cod=>{const btn=document.createElement('button');btn.innerHTML='<span>'+estados[cod].icon+'</span><small>'+estados[cod].label+'</small>';btn.className=a.estado===cod?estados[cod].cls:'';if(fechaSel>new Date().toISOString().split('T')[0])btn.disabled=true;btn.addEventListener('click',()=>marcar(a.id,cod,btn));estadosDiv.appendChild(btn)});card.appendChild(header);card.appendChild(estadosDiv);c.appendChild(card)})}
+window.marcar=function(id,estado,btn){const a=alumnos.find(x=>x.id===id);if(!a)return;a.estado=estado;const card=btn.closest('.card');if(card){card.querySelectorAll('button').forEach(b=>b.className='');btn.classList.add(estados[estado].cls);card.classList.add('completo')}contar();if(navigator.vibrate)navigator.vibrate(10)};
+function contar(){const p=alumnos.filter(a=>a.estado==='P').length,au=alumnos.filter(a=>a.estado==='A').length,t=alumnos.filter(a=>a.estado==='T').length,j=alumnos.filter(a=>a.estado==='J').length,e=alumnos.filter(a=>a.estado==='E').length,pend=alumnos.filter(a=>!a.estado).length;[['c-p',p],['c-a',au],['c-t',t],['c-j',j],['c-e',e],['c-pend',pend]].forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=v})}
+async function guardar(){const regs=alumnos.filter(a=>a.estado).map(a=>({alumno_id:a.id,fecha:fechaSel,estado:a.estado,hora:new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),user_id:user?.id||0}));if(!regs.length){tg.showAlert('Sin datos');return}const btn=document.getElementById('btn-guardar'),orig=btn.textContent;btn.disabled=true;btn.textContent='⏳...';try{const r=await fetch(API+'/asistencia/registrar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({registros:regs,user_id:user?.id||0})}),d=await r.json(),toast=document.getElementById('toast');if(toast){toast.textContent=d.modo==='online'?'✅ Guardado ('+d.registros+')':'💾 '+ (d.mensaje||'OK');toast.style.background=d.modo==='online'?'#1a1a1a':'#ff9800';toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),3e3)}}catch(e){console.error('❌ Guardar:',e);tg.showAlert('Error: '+e.message)}finally{const btn=document.getElementById('btn-guardar');btn.disabled=false;btn.textContent=orig}}
+function stats(){const p=alumnos.filter(a=>a.estado==='P').length,au=alumnos.filter(a=>a.estado==='A').length,t=alumnos.filter(a=>a.estado==='T').length,j=alumnos.filter(a=>a.estado==='J').length,e=alumnos.filter(a=>a.estado==='E').length,total=alumnos.length,ft=document.getElementById('fecha-display')?.textContent||fechaSel;alert('📊 '+ft+'\n\n✅:'+p+'\n❌:'+au+'\n⏰:'+t+'\n📝:'+j+'\n🚌:'+e+'\n\nTotal: '+total)}
+function mostrarError(msg){const l=document.getElementById('lista');if(l)l.innerHTML='<div class="error">'+msg+'</div>'}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+</script>
 </body>
 </html>
