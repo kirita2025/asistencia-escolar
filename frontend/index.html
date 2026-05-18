@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Control de Asistencia</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -36,8 +36,8 @@
         .card-header span { font-size: 0.78rem; color: #888; }
         .foto { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea, #764ba2); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
         .estados { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-        .estados button { padding: 10px 2px; border: 2px solid #e8e8e8; border-radius: 10px; background: white; font-size: 0.7rem; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
-        .estados button:active { transform: scale(0.95); }
+        .estados button { padding: 10px 2px; border: 2px solid #e8e8e8; border-radius: 10px; background: white; font-size: 0.7rem; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; touch-action: manipulation; user-select: none; }
+        .estados button:active { transform: scale(0.95); transition: transform 0.1s ease; }
         .estados button.sel-p { background: #4caf50; color: white; border-color: #4caf50; }
         .estados button.sel-a { background: #f44336; color: white; border-color: #f44336; }
         .estados button.sel-t { background: #ff9800; color: white; border-color: #ff9800; }
@@ -53,17 +53,6 @@
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; }
-        /* ✅ Mejorar respuesta táctil en móviles */
-        .estados button {
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-            user-select: none;
-        }
-        .estados button:active {
-            transform: scale(0.95);
-            transition: transform 0.1s ease;
-        }
-
     </style>
 </head>
 <body>
@@ -80,14 +69,14 @@
             <label>📅 Fecha de asistencia</label>
             <div class="fecha-row">
                 <input type="date" id="fecha-input">
-                <button class="btn-hoy" onclick="irAHoy()">Hoy</button>
+                <button id="btn-hoy" class="btn-hoy">Hoy</button>
             </div>
             <div class="solo-lectura" id="solo-lectura">👁️ Solo lectura</div>
         </div>
         <div class="filtros">
             <select id="grado"><option value="">Todos los grados</option></select>
             <select id="seccion"><option value="">Todas</option></select>
-            <button class="btn-cargar" onclick="cargar()">Cargar</button>
+            <button id="btn-cargar" class="btn-cargar">Cargar</button>
         </div>
         <div class="contador">
             <div><span class="num presente" id="c-p">0</span><span class="label">Presentes</span></div>
@@ -99,8 +88,8 @@
         </div>
         <div class="lista" id="lista"><div class="loading">Seleccioná grado/sección y tocá "Cargar"</div></div>
         <div class="acciones">
-            <button class="btn-guardar" id="btn-guardar" onclick="guardar()">💾 Guardar</button>
-            <button class="btn-stats" onclick="stats()">📊 Stats</button>
+            <button id="btn-guardar" class="btn-guardar">💾 Guardar</button>
+            <button id="btn-stats" class="btn-stats">📊 Stats</button>
         </div>
         <div class="toast" id="toast"></div>
     </div>
@@ -115,36 +104,46 @@
         
         const estados = {
             P: { icon: '✅', label: 'Presente', cls: 'sel-p' },
-            A: { icon: '❌', label: 'Ausente', cls: 'sel-a' },
-            T: { icon: '⏰', label: 'Tardanza', cls: 'sel-t' },
+            A: { icon: '', label: 'Ausente', cls: 'sel-a' },
+            T: { icon: '', label: 'Tardanza', cls: 'sel-t' },
             J: { icon: '📝', label: 'Justificado', cls: 'sel-j' },
             E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
         };
         
-        // ==================== INICIALIZACIÓN ====================
-        function init() {
-            console.log('🚀 Iniciando Mini App...');
+        // ==================== LÓGICA PRINCIPAL ====================
+        
+        async function init() {
+            console.log('🚀 Iniciando...');
             tg.ready();
             tg.expand();
+            
             actualizarHora();
             setInterval(actualizarHora, 1000);
+            
+            // 1. Bind Eventos (Sin onclick inline)
+            document.getElementById('btn-hoy').addEventListener('click', irAHoy);
+            document.getElementById('btn-cargar').addEventListener('click', cargar);
+            document.getElementById('btn-guardar').addEventListener('click', guardar);
+            document.getElementById('btn-stats').addEventListener('click', stats);
+            
+            // 2. Evento Fecha (input + change para compatibilidad total)
             const inputFecha = document.getElementById('fecha-input');
             if (inputFecha) {
                 inputFecha.value = fechaSel;
-                inputFecha.addEventListener('change', function(e) {
-                    fechaSel = e.target.value;
-                    actualizarFecha();
-                    cargar();
-                });
+                inputFecha.addEventListener('input', (e) => { fechaSel = e.target.value; actualizarFecha(); });
+                inputFecha.addEventListener('change', (e) => { fechaSel = e.target.value; actualizarFecha(); cargar(); });
             }
+            
             actualizarFecha();
-            auth().then(() => {
+            
+            try {
+                await auth();
                 verificarConexion();
                 cargarFiltros();
-            }).catch(err => {
+            } catch (err) {
                 console.error('Error init:', err);
-                mostrarError('Error de conexión. Intentá de nuevo.');
-            });
+                mostrarError('Error de conexión.');
+            }
         }
         
         function actualizarHora() {
@@ -153,22 +152,15 @@
         }
         
         async function auth() {
-            try {
-                console.log('🔑 Autenticando...');
-                const r = await fetch(`${API}/auth`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({initData: tg.initData || ''})
-                });
-                const d = await r.json();
-                if (!d.success) throw new Error('No auth');
-                user = d.user;
-                console.log('✅ Autenticado:', user.first_name);
-            } catch (e) {
-                console.error('❌ Auth error:', e);
-                document.body.innerHTML = '<div style="padding:40px;text-align:center"><h2>⛔ Acceso denegado</h2><p>Solo el maestro autorizado puede usar esta app.</p></div>';
-                throw e;
-            }
+            const r = await fetch(`${API}/auth`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({initData: tg.initData || ''})
+            });
+            const d = await r.json();
+            if (!d.success) throw new Error('No auth');
+            user = d.user;
+            console.log('✅ Autenticado:', user.first_name);
         }
         
         async function verificarConexion() {
@@ -177,7 +169,6 @@
                 const d = await r.json();
                 const badge = document.getElementById('modo-badge');
                 if (badge) badge.textContent = d.modo === 'online' ? '🟢 Online' : '🟡 Offline';
-                console.log('📡 Modo:', d.modo);
             } catch (e) {
                 console.error('❌ Sin conexión:', e);
                 const badge = document.getElementById('modo-badge');
@@ -189,10 +180,12 @@
             const f = new Date(fechaSel + 'T00:00:00');
             const display = document.getElementById('fecha-display');
             if (display) display.textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+            
             const hoy = new Date().toISOString().split('T')[0];
             const badge = document.getElementById('solo-lectura');
             const btn = document.getElementById('btn-guardar');
             if (!badge || !btn) return;
+            
             if (fechaSel === hoy) {
                 badge.style.display = 'none';
                 btn.disabled = false;
@@ -212,15 +205,13 @@
         
         function irAHoy() {
             fechaSel = new Date().toISOString().split('T')[0];
-            const input = document.getElementById('fecha-input');
-            if (input) input.value = fechaSel;
+            document.getElementById('fecha-input').value = fechaSel;
             actualizarFecha();
             cargar();
         }
         
         async function cargarFiltros() {
             try {
-                console.log('📥 Cargando filtros...');
                 const r = await fetch(`${API}/alumnos`);
                 const data = await r.json();
                 const grados = [...new Set(data.map(a => a.grado))].sort();
@@ -229,7 +220,6 @@
                 const ss = document.getElementById('seccion');
                 if (sg) grados.forEach(g => sg.add(new Option(g, g)));
                 if (ss) secciones.forEach(s => ss.add(new Option('Sección ' + s, s)));
-                console.log('✅ Filtros cargados');
             } catch (e) { console.error('❌ Error filtros:', e); }
         }
         
@@ -237,30 +227,32 @@
             const g = document.getElementById('grado')?.value || '';
             const s = document.getElementById('seccion')?.value || '';
             const lista = document.getElementById('lista');
-            lista.innerHTML = '<div class="loading">⏳ Cargando alumnos...</div>';
+            lista.innerHTML = '<div class="loading">⏳ Cargando...</div>';
             try {
-                console.log('📥 Cargando alumnos...');
                 const params = new URLSearchParams();
                 if (g) params.append('grado', g);
                 if (s) params.append('seccion', s);
                 const al = await (await fetch(`${API}/alumnos?${params}`)).json();
+                
                 const ap = new URLSearchParams();
                 ap.append('fecha', fechaSel);
                 if (g) ap.append('grado', g);
                 if (s) ap.append('seccion', s);
                 const asis = await (await fetch(`${API}/asistencia/hoy?${ap}`)).json();
+                
                 const asisMap = {};
                 (asis.asistencia || []).forEach(a => { asisMap[a.alumno_id || a.id] = a.estado; });
                 alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
+                
                 renderizar();
                 contar();
-                console.log('✅ Alumnos cargados:', alumnos.length);
             } catch (e) {
                 console.error('❌ Error cargando:', e);
                 mostrarError('Error: ' + e.message);
             }
         }
         
+        // ✅ RENDERIZADO CON ADD EVENT LISTENER (DOM PURIFICADO)
         function renderizar() {
             const container = document.getElementById('lista');
             if (!container) return;
@@ -269,39 +261,56 @@
                 return;
             }
             container.innerHTML = '';
+            
             alumnos.forEach((a, i) => {
                 const ini = (a.nombre[0] + (a.apellido_paterno || a.apellido || '')[0]).toUpperCase();
                 const card = document.createElement('div');
                 card.className = 'card' + (a.estado ? ' completo' : '');
-                card.style.animationDelay = (i * 0.03) + 's';
-                let btns = '';
-                // ✅ 5 estados: P, A, T, J, E
-                // Dentro de renderizar(), reemplazá el forEach de botones por esto:
+                
+                const header = document.createElement('div');
+                header.className = 'card-header';
+                header.innerHTML = `<div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div>`;
+                
+                const estadosDiv = document.createElement('div');
+                estadosDiv.className = 'estados';
+                
                 ['P','A','T','J','E'].forEach(cod => {
-                    const sel = a.estado === cod ? estados[cod].cls : '';
-                    const dis = fechaSel > new Date().toISOString().split('T')[0] ? 'disabled' : '';
-                    // ✅ Agregamos ontouchstart para compatibilidad móvil
-                    btns += `<button class="${sel}" ${dis} onclick="marcar(${a.id}, '${cod}', this)" ontouchstart="marcar(${a.id}, '${cod}', this)"><span>${estados[cod].icon}</span><small>${estados[cod].label}</small></button>`;
+                    const btn = document.createElement('button');
+                    btn.innerHTML = `<span>${estados[cod].icon}</span><small>${estados[cod].label}</small>`;
+                    btn.className = a.estado === cod ? estados[cod].cls : '';
+                    if (fechaSel > new Date().toISOString().split('T')[0]) btn.disabled = true;
+                    
+                    // ✅ UNIFICADO: Click funciona en ambos
+                    btn.addEventListener('click', () => {
+                        marcar(a.id, cod, btn);
+                    });
+                    
+                    estadosDiv.appendChild(btn);
                 });
-                card.innerHTML = `<div class="card-header"><div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div></div><div class="estados">${btns}</div>`;
+                
+                card.appendChild(header);
+                card.appendChild(estadosDiv);
                 container.appendChild(card);
             });
         }
         
-        function marcar(id, estado, btn) {
-            console.log('📱 TOUCH: marcar(', id, estado, ')');  // ← Agregar esto
+        // ✅ MARCAR GLOBAL PARA ACCESO SEGURO
+        window.marcar = function(id, estado, btn) {
             const a = alumnos.find(x => x.id === id);
             if (!a) return;
+            
             a.estado = estado;
+            
             const card = btn.closest('.card');
             if (card) {
                 card.querySelectorAll('button').forEach(b => b.className = '');
                 btn.classList.add(estados[estado].cls);
                 card.classList.add('completo');
             }
+            
             contar();
             if (navigator.vibrate) navigator.vibrate(10);
-        }
+        };
         
         function contar() {
             const p = alumnos.filter(a => a.estado === 'P').length;
@@ -310,12 +319,12 @@
             const j = alumnos.filter(a => a.estado === 'J').length;
             const e = alumnos.filter(a => a.estado === 'E').length;
             const pend = alumnos.filter(a => !a.estado).length;
-            const ids = ['c-p','c-a','c-t','c-j','c-e','c-pend'];
-            const vals = [p, au, t, j, e, pend];
-            ids.forEach((id, idx) => {
+            
+            const map = {'c-p':p, 'c-a':au, 'c-t':t, 'c-j':j, 'c-e':e, 'c-pend':pend};
+            for (const [id, val] of Object.entries(map)) {
                 const el = document.getElementById(id);
-                if (el) el.textContent = vals[idx];
-            });
+                if (el) el.textContent = val;
+            }
         }
         
         async function guardar() {
@@ -325,10 +334,12 @@
                 user_id: user?.id || 0
             }));
             if (!regs.length) { tg.showAlert('No hay asistencia para guardar'); return; }
+            
             const btn = document.getElementById('btn-guardar');
             const orig = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ Guardando...';
+            
             try {
                 const r = await fetch(`${API}/asistencia/registrar`, {
                     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -342,9 +353,8 @@
                     toast.classList.add('show');
                     setTimeout(() => toast.classList.remove('show'), 3000);
                 }
-                console.log('✅ Guardado:', d);
             } catch (e) {
-                console.error('❌ Error guardando:', e);
+                console.error(' Error guardando:', e);
                 tg.showAlert('Error: ' + e.message);
             } finally {
                 const btn = document.getElementById('btn-guardar');
@@ -361,7 +371,7 @@
             const e = alumnos.filter(a => a.estado === 'E').length;
             const total = alumnos.length;
             const ft = document.getElementById('fecha-display')?.textContent || fechaSel;
-            alert(`📊 ${ft}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${au}\n⏰ Tardanzas: ${t}\n📝 Justificados: ${j}\n🚌 Excursiones: ${e}\n\nTotal: ${total} alumnos`);
+            alert(` ${ft}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${au}\n Tardanzas: ${t}\n Justificados: ${j}\n🚌 Excursiones: ${e}\n\nTotal: ${total} alumnos`);
         }
         
         function mostrarError(msg) {
@@ -369,7 +379,7 @@
             if (lista) lista.innerHTML = `<div class="error">${msg}</div>`;
         }
         
-        // ==================== INICIAR ====================
+        // ==================== INICIO ====================
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
