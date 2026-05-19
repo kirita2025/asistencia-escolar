@@ -53,7 +53,7 @@
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; }
-        /* ✅ Mejorar respuesta táctil en móviles */
+        /* Mejorar respuesta táctil en móviles */
         .estados button {
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
@@ -63,8 +63,6 @@
             transform: scale(0.95);
             transition: transform 0.1s ease;
         }
-
-    
         /* 🔍 Barra de búsqueda */
         .busqueda-bar {
             display: flex;
@@ -108,7 +106,161 @@
             from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
         }
-</style>
+        /* 📊 Modal de reporte */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 20px;
+            animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .modal-header h2 { font-size: 1.1rem; color: #333; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #888;
+        }
+        .modal-body { font-size: 0.9rem; }
+        .reporte-filtros {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .reporte-filtros input {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+        .reporte-tabla {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        .reporte-tabla th {
+            background: #f5f5f5;
+            padding: 8px;
+            text-align: left;
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+        }
+        .reporte-tabla td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .reporte-tabla tr:hover { background: #f9f9f9; }
+        .btn-modal {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 12px;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .btn-exportar {
+            background: #4caf50;
+            margin-top: 8px;
+        }
+        .estadistica-bar {
+            display: flex;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 4px 0;
+        }
+        .est-p { background: #4caf50; }
+        .est-a { background: #f44336; }
+        .est-t { background: #ff9800; }
+        .est-j { background: #2196f3; }
+        .est-e { background: #9c27b0; }
+        /* 📷 Input de archivo para justificación */
+        .justificacion-input {
+            display: none;
+        }
+        .btn-adjuntar {
+            font-size: 0.65rem;
+            padding: 4px 8px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 4px;
+            font-family: inherit;
+        }
+        .adjunto-preview {
+            max-width: 60px;
+            max-height: 60px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+        /* 📱 QR Scanner */
+        .qr-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 3000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .qr-overlay.show { display: flex; }
+        .qr-video {
+            width: 100%;
+            max-width: 300px;
+            border-radius: 12px;
+        }
+        .qr-instructions {
+            color: white;
+            margin-top: 16px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .btn-cerrar-qr {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+        }
+    </style>
 <base target="_blank">
 </head>
 <body>
@@ -134,13 +286,12 @@
             <select id="seccion"><option value="">Todas</option></select>
             <button class="btn-cargar" onclick="cargar()">Cargar</button>
         </div>
-                <!-- 🔍 Barra de búsqueda -->
+        <!-- 🔍 Barra de búsqueda -->
         <div class="busqueda-bar" id="busqueda-container" style="display:none;">
             <input type="text" id="busqueda-input" placeholder="🔍 Buscar alumno..." autocomplete="off">
             <button id="btn-todos-presentes" class="btn-todos-p">✅ Todos</button>
         </div>
-
-<div class="contador">
+        <div class="contador">
             <div><span class="num presente" id="c-p">0</span><span class="label">Presentes</span></div>
             <div><span class="num ausente" id="c-a">0</span><span class="label">Ausentes</span></div>
             <div><span class="num tardanza" id="c-t">0</span><span class="label">Tardanzas</span></div>
@@ -156,6 +307,50 @@
         <div class="toast" id="toast"></div>
     </div>
 
+    <!-- 📊 Modal de Reporte -->
+    <div class="modal-overlay" id="modal-reporte">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>📊 Reporte de Asistencia</h2>
+                <button class="modal-close" onclick="cerrarModal('modal-reporte')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="reporte-filtros">
+                    <input type="date" id="reporte-desde" placeholder="Desde">
+                    <input type="date" id="reporte-hasta" placeholder="Hasta">
+                </div>
+                <button class="btn-modal" onclick="generarReporte()">Generar Reporte</button>
+                <button class="btn-modal btn-exportar" onclick="exportarCSV()">📥 Descargar CSV</button>
+                <div id="reporte-contenido"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📷 Modal de Justificación -->
+    <div class="modal-overlay" id="modal-justificacion">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>📝 Justificación</h2>
+                <button class="modal-close" onclick="cerrarModal('modal-justificacion')">✕</button>
+            </div>
+            <div class="modal-body">
+                <p id="justificacion-alumno" style="margin-bottom:12px;font-weight:700;"></p>
+                <textarea id="justificacion-nota" placeholder="Motivo de la justificación..." style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-family:inherit;min-height:80px;resize:vertical;"></textarea>
+                <input type="file" id="justificacion-archivo" class="justificacion-input" accept="image/*" onchange="previewArchivo(this)">
+                <button class="btn-adjuntar" onclick="document.getElementById('justificacion-archivo').click()">📷 Adjuntar foto</button>
+                <div id="justificacion-preview"></div>
+                <button class="btn-modal" onclick="guardarJustificacion()">Guardar Justificación</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📱 QR Scanner -->
+    <div class="qr-overlay" id="qr-scanner">
+        <video id="qr-video" class="qr-video" autoplay playsinline></video>
+        <p class="qr-instructions">Escaneá el QR del alumno</p>
+        <button class="btn-cerrar-qr" onclick="cerrarQR()">✕ Cerrar</button>
+    </div>
+
     <script>
         // ==================== CONFIGURACIÓN ====================
         const API = 'https://bot-proveedores-backend.onrender.com/api';
@@ -163,7 +358,9 @@
         let user = null;
         let alumnos = [];
         let fechaSel = new Date().toISOString().split('T')[0];
-        
+        let alumnoJustificacionId = null;
+        let reporteData = [];
+
         const estados = {
             P: { icon: '✅', label: 'Presente', cls: 'sel-p' },
             A: { icon: '❌', label: 'Ausente', cls: 'sel-a' },
@@ -171,7 +368,7 @@
             J: { icon: '📝', label: 'Justificado', cls: 'sel-j' },
             E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
         };
-        
+
         // ==================== INICIALIZACIÓN ====================
         function init() {
             console.log('🚀 Iniciando Mini App...');
@@ -188,7 +385,6 @@
                     cargar();
                 });
             }
-            
             actualizarFecha();
 
             const busquedaInput = document.getElementById('busqueda-input');
@@ -217,10 +413,14 @@
                 console.error('Error init:', err);
                 mostrarError('Error de conexión. Intentá de nuevo.');
             });
-        }function actualizarHora() {
+        }
+
+        function actualizarHora() {
             const el = document.getElementById('hora');
             if (el) el.textContent = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-        }async function auth() {
+        }
+
+        async function auth() {
             try {
                 console.log('🔑 Autenticando...');
                 const r = await fetch(`${API}/auth`, {
@@ -237,7 +437,9 @@
                 document.body.innerHTML = '<div style="padding:40px;text-align:center"><h2>⛔ Acceso denegado</h2><p>Solo el maestro autorizado puede usar esta app.</p></div>';
                 throw e;
             }
-        }async function verificarConexion() {
+        }
+
+        async function verificarConexion() {
             try {
                 const r = await fetch(`${API}/`, {method: 'GET'});
                 const d = await r.json();
@@ -249,7 +451,9 @@
                 const badge = document.getElementById('modo-badge');
                 if (badge) badge.textContent = '🔴 Sin conexión';
             }
-        }function actualizarFecha() {
+        }
+
+        function actualizarFecha() {
             const f = new Date(fechaSel + 'T00:00:00');
             const display = document.getElementById('fecha-display');
             if (display) display.textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
@@ -268,13 +472,17 @@
                 badge.style.display = 'block'; badge.textContent = '🔒 No se puede registrar asistencia futura';
                 btn.disabled = true; btn.textContent = '🔒 Bloqueado';
             }
-        }function irAHoy() {
+        }
+
+        function irAHoy() {
             fechaSel = new Date().toISOString().split('T')[0];
             const input = document.getElementById('fecha-input');
             if (input) input.value = fechaSel;
             actualizarFecha();
             cargar();
-        }async function cargarFiltros() {
+        }
+
+        async function cargarFiltros() {
             try {
                 console.log('📥 Cargando filtros...');
                 const r = await fetch(`${API}/alumnos`);
@@ -287,7 +495,9 @@
                 if (ss) secciones.forEach(s => ss.add(new Option('Sección ' + s, s)));
                 console.log('✅ Filtros cargados');
             } catch (e) { console.error('❌ Error filtros:', e); }
-        }async function cargar() {
+        }
+
+        async function cargar() {
             const g = document.getElementById('grado')?.value || '';
             const s = document.getElementById('seccion')?.value || '';
             const lista = document.getElementById('lista');
@@ -316,7 +526,9 @@
                 console.error('❌ Error cargando:', e);
                 mostrarError('Error: ' + e.message);
             }
-        }function renderizar() {
+        }
+
+        function renderizar() {
             const container = document.getElementById('lista');
             if (!container) return;
             if (alumnos.length === 0) {
@@ -360,6 +572,19 @@
                     estadosDiv.appendChild(btn);
                 });
 
+                // Botón de justificación para estado J
+                if (a.estado === 'J') {
+                    const btnJust = document.createElement('button');
+                    btnJust.className = 'btn-adjuntar';
+                    btnJust.textContent = '📷 Justificación';
+                    btnJust.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        abrirJustificacion(a.id);
+                    });
+                    estadosDiv.appendChild(btnJust);
+                }
+
                 card.appendChild(header);
                 card.appendChild(estadosDiv);
                 container.appendChild(card);
@@ -367,8 +592,10 @@
 
             const busquedaTexto = document.getElementById('busqueda-input')?.value || '';
             if (busquedaTexto) filtrarBusqueda();
-        }function marcar(id, estado, btn) {
-            console.log('📱 TOUCH: marcar(', id, estado, ')');  // ← Agregar esto
+        }
+
+        function marcar(id, estado, btn) {
+            console.log('📱 marcar(', id, estado, ')');
             const a = alumnos.find(x => x.id === id);
             if (!a) return;
             a.estado = estado;
@@ -380,7 +607,9 @@
             }
             contar();
             if (navigator.vibrate) navigator.vibrate(10);
-        }function contar() {
+        }
+
+        function contar() {
             const p = alumnos.filter(a => a.estado === 'P').length;
             const au = alumnos.filter(a => a.estado === 'A').length;
             const t = alumnos.filter(a => a.estado === 'T').length;
@@ -393,7 +622,9 @@
                 const el = document.getElementById(id);
                 if (el) el.textContent = vals[idx];
             });
-        }async function guardar() {
+        }
+
+        async function guardar() {
             const regs = alumnos.filter(a => a.estado).map(a => ({
                 alumno_id: a.id, fecha: fechaSel, estado: a.estado,
                 hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}),
@@ -426,7 +657,9 @@
                 btn.disabled = false;
                 btn.textContent = orig;
             }
-        }function stats() {
+        }
+
+        function stats() {
             const p = alumnos.filter(a => a.estado === 'P').length;
             const au = alumnos.filter(a => a.estado === 'A').length;
             const t = alumnos.filter(a => a.estado === 'T').length;
@@ -434,110 +667,347 @@
             const e = alumnos.filter(a => a.estado === 'E').length;
             const total = alumnos.length;
             const ft = document.getElementById('fecha-display')?.textContent || fechaSel;
-            alert(`📊 ${ft}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${au}\n⏰ Tardanzas: ${t}\n📝 Justificados: ${j}\n🚌 Excursiones: ${e}\n\nTotal: ${total} alumnos`);
-        }function mostrarError(msg) {
+            tg.showAlert(`📊 ${ft}
+
+✅ Presentes: ${p}
+❌ Ausentes: ${au}
+⏰ Tardanzas: ${t}
+📝 Justificados: ${j}
+🚌 Excursiones: ${e}
+
+Total: ${total} alumnos`);
+        }
+
+        function mostrarError(msg) {
             const lista = document.getElementById('lista');
             if (lista) lista.innerHTML = `<div class="error">${msg}</div>`;
         }
-        
-        
-    // 🔍 Filtrar alumnos por búsqueda
-    function filtrarBusqueda() {
-        const texto = document.getElementById('busqueda-input').value.toLowerCase().trim();
-        const cards = document.querySelectorAll('.card');
 
-        cards.forEach(card => {
-            const nombre = card.querySelector('h3')?.textContent.toLowerCase() || '';
-            const matricula = card.querySelector('span')?.textContent.toLowerCase() || '';
+        // 🔍 Filtrar alumnos por búsqueda
+        function filtrarBusqueda() {
+            const texto = document.getElementById('busqueda-input').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.card');
 
-            if (texto === '' || nombre.includes(texto) || matricula.includes(texto)) {
-                card.style.display = '';
-                card.classList.remove('destacado');
+            cards.forEach(card => {
+                const nombre = card.querySelector('h3')?.textContent.toLowerCase() || '';
+                const matricula = card.querySelector('span')?.textContent.toLowerCase() || '';
+
+                if (texto === '' || nombre.includes(texto) || matricula.includes(texto)) {
+                    card.style.display = '';
+                    card.classList.remove('destacado');
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            if (texto.length > 0) {
+                const visibles = document.querySelectorAll('.card:not([style*="none"])');
+                if (visibles.length === 1) {
+                    visibles[0].classList.add('destacado');
+                }
+            }
+        }
+
+        // ✅ Marcar todos como presentes (con confirmación)
+        let marcandoTodos = false;
+
+        function marcarTodosPresentes() {
+            if (marcandoTodos) return;
+            marcandoTodos = true;
+
+            const hoyStr = new Date().toISOString().split('T')[0];
+
+            if (fechaSel > hoyStr) {
+                tg.showAlert('No se puede marcar asistencia futura');
+                marcandoTodos = false;
+                return;
+            }
+
+            const yaMarcados = alumnos.filter(a => a.estado).length;
+            const pendientes = alumnos.filter(a => !a.estado).length;
+
+            if (yaMarcados > 0 && pendientes === 0) {
+                tg.showConfirm(
+                    'Todos los alumnos ya tienen asistencia marcada (' + yaMarcados + '). ¿Querés sobreescribir TODOS como Presente?',
+                    function(confirmado) {
+                        if (confirmado) {
+                            ejecutarMarcarTodosPresentes(true);
+                        } else {
+                            marcandoTodos = false;
+                        }
+                    }
+                );
+            } else if (yaMarcados > 0 && pendientes > 0) {
+                tg.showConfirm(
+                    'Ya hay ' + yaMarcados + ' alumnos marcados y ' + pendientes + ' pendientes. ¿Marcar TODOS como Presente (sobreescribiendo los ya marcados)?',
+                    function(confirmado) {
+                        if (confirmado) {
+                            ejecutarMarcarTodosPresentes(true);
+                        } else {
+                            ejecutarMarcarTodosPresentes(false);
+                        }
+                    }
+                );
             } else {
-                card.style.display = 'none';
-            }
-        });
-
-        if (texto.length > 0) {
-            const visibles = document.querySelectorAll('.card:not([style*="none"])');
-            if (visibles.length === 1) {
-                visibles[0].classList.add('destacado');
+                ejecutarMarcarTodosPresentes(false);
             }
         }
-    }
 
-    // ✅ Marcar todos como presentes (con confirmación)
-    let marcandoTodos = false;
+        function ejecutarMarcarTodosPresentes(forzarSobreescribir) {
+            let marcados = 0;
 
-    function marcarTodosPresentes() {
-        if (marcandoTodos) return;
-        marcandoTodos = true;
-
-        const hoyStr = new Date().toISOString().split('T')[0];
-
-        if (fechaSel > hoyStr) {
-            tg.showAlert('No se puede marcar asistencia futura');
-            marcandoTodos = false;
-            return;
-        }
-
-        const yaMarcados = alumnos.filter(a => a.estado).length;
-        const pendientes = alumnos.filter(a => !a.estado).length;
-
-        if (yaMarcados > 0 && pendientes === 0) {
-            tg.showConfirm(
-                'Todos los alumnos ya tienen asistencia marcada (' + yaMarcados + '). ¿Querés sobreescribir TODOS como Presente?',
-                function(confirmado) {
-                    if (confirmado) {
-                        ejecutarMarcarTodosPresentes(true);
-                    } else {
-                        marcandoTodos = false;
-                    }
+            alumnos.forEach(a => {
+                if (forzarSobreescribir || !a.estado) {
+                    a.estado = 'P';
+                    marcados++;
                 }
-            );
-        } else if (yaMarcados > 0 && pendientes > 0) {
-            tg.showConfirm(
-                'Ya hay ' + yaMarcados + ' alumnos marcados y ' + pendientes + ' pendientes. ¿Marcar TODOS como Presente (sobreescribiendo los ya marcados)?',
-                function(confirmado) {
-                    if (confirmado) {
-                        ejecutarMarcarTodosPresentes(true);
-                    } else {
-                        ejecutarMarcarTodosPresentes(false);
-                    }
-                }
-            );
-        } else {
-            ejecutarMarcarTodosPresentes(false);
-        }
-    }
+            });
 
-    function ejecutarMarcarTodosPresentes(forzarSobreescribir) {
-        let marcados = 0;
+            renderizar();
+            contar();
 
-        alumnos.forEach(a => {
-            if (forzarSobreescribir || !a.estado) {
-                a.estado = 'P';
-                marcados++;
+            const toast = document.getElementById('toast');
+            if (toast) {
+                toast.textContent = '✅ ' + marcados + ' alumnos marcados presentes';
+                toast.style.background = '#4caf50';
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
             }
-        });
 
-        renderizar();
-        contar();
+            if (navigator.vibrate) navigator.vibrate(20);
 
-        const toast = document.getElementById('toast');
-        if (toast) {
-            toast.textContent = '✅ ' + marcados + ' alumnos marcados presentes';
-            toast.style.background = '#4caf50';
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2000);
+            setTimeout(() => { marcandoTodos = false; }, 500);
         }
 
-        if (navigator.vibrate) navigator.vibrate(20);
+        // ==================== 📊 REPORTE SEMANAL/MENSUAL ====================
+        function abrirReporte() {
+            document.getElementById('modal-reporte').classList.add('show');
+            // Setear fechas por defecto (última semana)
+            const hoy = new Date();
+            const hace7dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
+            document.getElementById('reporte-hasta').value = hoy.toISOString().split('T')[0];
+            document.getElementById('reporte-desde').value = hace7dias.toISOString().split('T')[0];
+        }
 
-        setTimeout(() => { marcandoTodos = false; }, 500);
-    }
+        function cerrarModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
 
-    // ==================== INICIAR ====================
+        async function generarReporte() {
+            const desde = document.getElementById('reporte-desde').value;
+            const hasta = document.getElementById('reporte-hasta').value;
+
+            if (!desde || !hasta) {
+                tg.showAlert('Seleccioná fechas desde y hasta');
+                return;
+            }
+
+            const g = document.getElementById('grado')?.value || '';
+            const s = document.getElementById('seccion')?.value || '';
+
+            try {
+                document.getElementById('reporte-contenido').innerHTML = '<div class="loading">⏳ Generando reporte...</div>';
+
+                // Obtener asistencia en rango de fechas
+                const params = new URLSearchParams();
+                params.append('desde', desde);
+                params.append('hasta', hasta);
+                if (g) params.append('grado', g);
+                if (s) params.append('seccion', s);
+
+                const r = await fetch(`${API}/asistencia/reporte?${params}`);
+                const data = await r.json();
+                reporteData = data;
+
+                mostrarReporte(data);
+            } catch (e) {
+                document.getElementById('reporte-contenido').innerHTML = '<div class="error">Error: ' + e.message + '</div>';
+            }
+        }
+
+        function mostrarReporte(data) {
+            if (!data || !data.length) {
+                document.getElementById('reporte-contenido').innerHTML = '<div class="loading">No hay datos en este período</div>';
+                return;
+            }
+
+            let html = '<table class="reporte-tabla"><thead><tr>';
+            html += '<th>Alumno</th><th>P</th><th>A</th><th>T</th><th>J</th><th>E</th><th>%P</th>';
+            html += '</tr></thead><tbody>';
+
+            data.forEach(row => {
+                const total = row.P + row.A + row.T + row.J + row.E;
+                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
+                html += `<tr>
+                    <td><strong>${row.nombre}</strong><br><small>${row.matricula}</small></td>
+                    <td style="color:#4caf50">${row.P}</td>
+                    <td style="color:#f44336">${row.A}</td>
+                    <td style="color:#ff9800">${row.T}</td>
+                    <td style="color:#2196f3">${row.J}</td>
+                    <td style="color:#9c27b0">${row.E}</td>
+                    <td><strong>${porcentaje}%</strong>
+                        <div class="estadistica-bar">
+                            <div class="est-p" style="width:${row.P/total*100}%"></div>
+                            <div class="est-a" style="width:${row.A/total*100}%"></div>
+                            <div class="est-t" style="width:${row.T/total*100}%"></div>
+                            <div class="est-j" style="width:${row.J/total*100}%"></div>
+                            <div class="est-e" style="width:${row.E/total*100}%"></div>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('reporte-contenido').innerHTML = html;
+        }
+
+        // ==================== 📥 EXPORTAR CSV ====================
+        function exportarCSV() {
+            if (!reporteData || !reporteData.length) {
+                tg.showAlert('Primero generá el reporte');
+                return;
+            }
+
+            const desde = document.getElementById('reporte-desde').value;
+            const hasta = document.getElementById('reporte-hasta').value;
+
+            let csv = 'Alumno,Matricula,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,
+';
+
+            reporteData.forEach(row => {
+                const total = row.P + row.A + row.T + row.J + row.E;
+                csv += `"${row.nombre}",${row.matricula},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias}
+`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `asistencia_${desde}_a_${hasta}.csv`;
+            link.click();
+
+            const toast = document.getElementById('toast');
+            if (toast) {
+                toast.textContent = '📥 CSV descargado';
+                toast.style.background = '#4caf50';
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            }
+        }
+
+        // ==================== 📝 JUSTIFICACIÓN CON NOTA Y FOTO ====================
+        function abrirJustificacion(alumnoId) {
+            const alumno = alumnos.find(a => a.id === alumnoId);
+            if (!alumno) return;
+
+            alumnoJustificacionId = alumnoId;
+            document.getElementById('justificacion-alumno').textContent = alumno.nombre + ' ' + (alumno.apellido_paterno || '');
+            document.getElementById('justificacion-nota').value = '';
+            document.getElementById('justificacion-preview').innerHTML = '';
+            document.getElementById('justificacion-archivo').value = '';
+
+            document.getElementById('modal-justificacion').classList.add('show');
+        }
+
+        function previewArchivo(input) {
+            const preview = document.getElementById('justificacion-preview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = '<img src="' + e.target.result + '" class="adjunto-preview">';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function guardarJustificacion() {
+            const nota = document.getElementById('justificacion-nota').value.trim();
+            const archivoInput = document.getElementById('justificacion-archivo');
+
+            if (!nota && !archivoInput.files.length) {
+                tg.showAlert('Agregá una nota o adjuntá una foto');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('alumno_id', alumnoJustificacionId);
+            formData.append('fecha', fechaSel);
+            formData.append('nota', nota);
+            if (archivoInput.files.length) {
+                formData.append('archivo', archivoInput.files[0]);
+            }
+
+            try {
+                const r = await fetch(`${API}/asistencia/justificacion`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const d = await r.json();
+
+                if (d.success) {
+                    tg.showAlert('✅ Justificación guardada');
+                    cerrarModal('modal-justificacion');
+                } else {
+                    tg.showAlert('❌ Error: ' + d.message);
+                }
+            } catch (e) {
+                tg.showAlert('Error guardando: ' + e.message);
+            }
+        }
+
+        // ==================== 📱 QR SCANNER ====================
+        let qrStream = null;
+
+        async function abrirQRScanner() {
+            const overlay = document.getElementById('qr-scanner');
+            const video = document.getElementById('qr-video');
+
+            try {
+                qrStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                video.srcObject = qrStream;
+                overlay.classList.add('show');
+
+                // Simular escaneo (en producción usar librería como jsQR)
+                tg.showAlert('📷 Escaneá el QR del alumno
+
+(En esta versión, ingresá la matrícula manualmente)');
+
+                // Cerrar automáticamente después de 30 segundos
+                setTimeout(() => cerrarQR(), 30000);
+            } catch (e) {
+                tg.showAlert('No se pudo acceder a la cámara: ' + e.message);
+            }
+        }
+
+        function cerrarQR() {
+            const overlay = document.getElementById('qr-scanner');
+            overlay.classList.remove('show');
+            if (qrStream) {
+                qrStream.getTracks().forEach(track => track.stop());
+                qrStream = null;
+            }
+        }
+
+        function procesarQR(matricula) {
+            // Buscar alumno por matrícula
+            const alumno = alumnos.find(a => a.matricula === matricula);
+            if (!alumno) {
+                tg.showAlert('Alumno no encontrado: ' + matricula);
+                return;
+            }
+
+            // Marcar como presente
+            alumno.estado = 'P';
+            renderizar();
+            contar();
+
+            tg.showAlert('✅ ' + alumno.nombre + ' marcado Presente');
+            cerrarQR();
+        }
+
+        // ==================== INICIAR ====================
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
@@ -546,4 +1016,3 @@
     </script>
 </body>
 </html>
-    
