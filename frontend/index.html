@@ -65,7 +65,7 @@
         }
 
     
-        /* 🔍 NUEVO: Barra de búsqueda */
+        /* 🔍 Barra de búsqueda */
         .busqueda-bar {
             display: flex;
             gap: 8px;
@@ -84,10 +84,7 @@
             -webkit-appearance: none;
             appearance: none;
         }
-        .busqueda-bar input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+        .busqueda-bar input:focus { outline: none; border-color: #667eea; }
         .btn-todos-p {
             padding: 10px 14px;
             background: #4caf50;
@@ -137,7 +134,7 @@
             <select id="seccion"><option value="">Todas</option></select>
             <button class="btn-cargar" onclick="cargar()">Cargar</button>
         </div>
-                <!-- 🔍 NUEVO: Barra de búsqueda -->
+                <!-- 🔍 Barra de búsqueda -->
         <div class="busqueda-bar" id="busqueda-container" style="display:none;">
             <input type="text" id="busqueda-input" placeholder="🔍 Buscar alumno..." autocomplete="off">
             <button id="btn-todos-presentes" class="btn-todos-p">✅ Todos</button>
@@ -159,7 +156,8 @@
         <div class="toast" id="toast"></div>
     </div>
 
-    <script>// ==================== CONFIGURACIÓN ====================
+    <script>
+        // ==================== CONFIGURACIÓN ====================
         const API = 'https://bot-proveedores-backend.onrender.com/api';
         const tg = window.Telegram.WebApp;
         let user = null;
@@ -187,13 +185,16 @@
                 inputFecha.addEventListener('change', function(e) {
                     fechaSel = e.target.value;
                     actualizarFecha();
-            // 🔍 NUEVO: Event listeners para búsqueda
+                    cargar();
+                });
+            }
+            actualizarFecha();
+
             const busquedaInput = document.getElementById('busqueda-input');
             if (busquedaInput) {
                 busquedaInput.addEventListener('input', filtrarBusqueda);
             }
 
-            // ✅ NUEVO: Botón "Todos Presentes"
             const btnTodosP = document.getElementById('btn-todos-presentes');
             if (btnTodosP) {
                 btnTodosP.addEventListener('click', function(e) {
@@ -208,10 +209,6 @@
                 }, {passive: false});
             }
 
-                    cargar();
-                });
-            }
-            actualizarFecha();
             auth().then(() => {
                 verificarConexion();
                 cargarFiltros();
@@ -219,14 +216,10 @@
                 console.error('Error init:', err);
                 mostrarError('Error de conexión. Intentá de nuevo.');
             });
-        }
-        
-        function actualizarHora() {
+        }function actualizarHora() {
             const el = document.getElementById('hora');
             if (el) el.textContent = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-        }
-        
-        async function auth() {
+        }async function auth() {
             try {
                 console.log('🔑 Autenticando...');
                 const r = await fetch(`${API}/auth`, {
@@ -243,9 +236,7 @@
                 document.body.innerHTML = '<div style="padding:40px;text-align:center"><h2>⛔ Acceso denegado</h2><p>Solo el maestro autorizado puede usar esta app.</p></div>';
                 throw e;
             }
-        }
-        
-        async function verificarConexion() {
+        }async function verificarConexion() {
             try {
                 const r = await fetch(`${API}/`, {method: 'GET'});
                 const d = await r.json();
@@ -257,45 +248,32 @@
                 const badge = document.getElementById('modo-badge');
                 if (badge) badge.textContent = '🔴 Sin conexión';
             }
-        }
-        
-        function actualizarFecha() {
+        }function actualizarFecha() {
             const f = new Date(fechaSel + 'T00:00:00');
             const display = document.getElementById('fecha-display');
             if (display) display.textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 
-            // ✅ CORRECCIÓN: Comparar strings directamente, no objetos Date (evita problemas de zona horaria)
             const hoyStr = new Date().toISOString().split('T')[0];
 
             const badge = document.getElementById('solo-lectura');
             const btn = document.getElementById('btn-guardar');
             if (!badge || !btn) return;
-
             if (fechaSel === hoyStr) {
-                badge.style.display = 'none';
-                btn.disabled = false;
-                btn.textContent = '💾 Guardar';
+                badge.style.display = 'none'; btn.disabled = false; btn.textContent = '💾 Guardar';
             } else if (fechaSel < hoyStr) {
-                badge.style.display = 'block';
-                badge.textContent = '👁️ Cargando asistencia histórica';
-                btn.disabled = false;
-                btn.textContent = '💾 Cargar atrasado';
+                badge.style.display = 'block'; badge.textContent = '👁️ Cargando asistencia histórica';
+                btn.disabled = false; btn.textContent = '💾 Cargar atrasado';
             } else {
-                badge.style.display = 'block';
-                badge.textContent = '🔒 No se puede registrar asistencia futura';
-                btn.disabled = true;
-                btn.textContent = '🔒 Bloqueado';
+                badge.style.display = 'block'; badge.textContent = '🔒 No se puede registrar asistencia futura';
+                btn.disabled = true; btn.textContent = '🔒 Bloqueado';
             }
-        }
-function irAHoy() {
+        }function irAHoy() {
             fechaSel = new Date().toISOString().split('T')[0];
             const input = document.getElementById('fecha-input');
             if (input) input.value = fechaSel;
             actualizarFecha();
             cargar();
-        }
-        
-        async function cargarFiltros() {
+        }async function cargarFiltros() {
             try {
                 console.log('📥 Cargando filtros...');
                 const r = await fetch(`${API}/alumnos`);
@@ -308,17 +286,14 @@ function irAHoy() {
                 if (ss) secciones.forEach(s => ss.add(new Option('Sección ' + s, s)));
                 console.log('✅ Filtros cargados');
             } catch (e) { console.error('❌ Error filtros:', e); }
-        }
-        
-        async function cargar() {
+        }async function cargar() {
             const g = document.getElementById('grado')?.value || '';
             const s = document.getElementById('seccion')?.value || '';
             const lista = document.getElementById('lista');
-            // Mostrar barra de búsqueda
+            lista.innerHTML = '<div class="loading">⏳ Cargando alumnos...</div>';
+
             const busquedaContainer = document.getElementById('busqueda-container');
             if (busquedaContainer) busquedaContainer.style.display = 'flex';
-
-            lista.innerHTML = '<div class="loading">⏳ Cargando alumnos...</div>';
             try {
                 console.log('📥 Cargando alumnos...');
                 const params = new URLSearchParams();
@@ -340,9 +315,7 @@ function irAHoy() {
                 console.error('❌ Error cargando:', e);
                 mostrarError('Error: ' + e.message);
             }
-        }
-        
-        function renderizar() {
+        }function renderizar() {
             const container = document.getElementById('lista');
             if (!container) return;
             if (alumnos.length === 0) {
@@ -356,33 +329,27 @@ function irAHoy() {
                 card.className = 'card' + (a.estado ? ' completo' : '');
                 card.style.animationDelay = (i * 0.03) + 's';
 
-                // Header
                 const header = document.createElement('div');
                 header.className = 'card-header';
                 header.innerHTML = `<div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div>`;
 
-                // Botones container
                 const estadosDiv = document.createElement('div');
                 estadosDiv.className = 'estados';
 
-                // Crear botones con addEventListener (más robusto que onclick inline)
                 ['P','A','T','J','E'].forEach(cod => {
                     const btn = document.createElement('button');
                     btn.innerHTML = `<span>${estados[cod].icon}</span><small>${estados[cod].label}</small>`;
                     btn.className = a.estado === cod ? estados[cod].cls : '';
 
-                    //  ✅ CORRECCIÓN: Comparación de fechas con strings, no objetos Date
                     const hoyStr = new Date().toISOString().split('T')[0];
                     if (fechaSel > hoyStr) btn.disabled = true;
 
-                    //  ✅ CORRECCIÓN: addEventListener en lugar de onclick inline
                     btn.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
                         marcar(a.id, cod, this);
                     });
 
-                    // Touch para Android (sin ontouchstart inline)
                     btn.addEventListener('touchend', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -397,11 +364,9 @@ function irAHoy() {
                 container.appendChild(card);
             });
 
-            // Re-aplicar filtro de búsqueda si hay texto
             const busquedaTexto = document.getElementById('busqueda-input')?.value || '';
             if (busquedaTexto) filtrarBusqueda();
-        }
-function marcar(id, estado, btn) {
+        }function marcar(id, estado, btn) {
             console.log('📱 TOUCH: marcar(', id, estado, ')');  // ← Agregar esto
             const a = alumnos.find(x => x.id === id);
             if (!a) return;
@@ -414,9 +379,7 @@ function marcar(id, estado, btn) {
             }
             contar();
             if (navigator.vibrate) navigator.vibrate(10);
-        }
-        
-        function contar() {
+        }function contar() {
             const p = alumnos.filter(a => a.estado === 'P').length;
             const au = alumnos.filter(a => a.estado === 'A').length;
             const t = alumnos.filter(a => a.estado === 'T').length;
@@ -429,9 +392,7 @@ function marcar(id, estado, btn) {
                 const el = document.getElementById(id);
                 if (el) el.textContent = vals[idx];
             });
-        }
-        
-        async function guardar() {
+        }async function guardar() {
             const regs = alumnos.filter(a => a.estado).map(a => ({
                 alumno_id: a.id, fecha: fechaSel, estado: a.estado,
                 hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}),
@@ -464,9 +425,7 @@ function marcar(id, estado, btn) {
                 btn.disabled = false;
                 btn.textContent = orig;
             }
-        }
-        
-        function stats() {
+        }function stats() {
             const p = alumnos.filter(a => a.estado === 'P').length;
             const au = alumnos.filter(a => a.estado === 'A').length;
             const t = alumnos.filter(a => a.estado === 'T').length;
@@ -475,15 +434,13 @@ function marcar(id, estado, btn) {
             const total = alumnos.length;
             const ft = document.getElementById('fecha-display')?.textContent || fechaSel;
             alert(`📊 ${ft}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${au}\n⏰ Tardanzas: ${t}\n📝 Justificados: ${j}\n🚌 Excursiones: ${e}\n\nTotal: ${total} alumnos`);
-        }
-        
-        function mostrarError(msg) {
+        }function mostrarError(msg) {
             const lista = document.getElementById('lista');
             if (lista) lista.innerHTML = `<div class="error">${msg}</div>`;
         }
         
         
-// 🔍 NUEVO: Filtrar alumnos por búsqueda
+// 🔍 Filtrar alumnos por búsqueda
 function filtrarBusqueda() {
     const texto = document.getElementById('busqueda-input').value.toLowerCase().trim();
     const cards = document.querySelectorAll('.card');
@@ -508,17 +465,13 @@ function filtrarBusqueda() {
     }
 }
 
-// ✅ NUEVO: Marcar todos como presentes
-let marcandoTodos = false;
-
-// ✅ NUEVO: Marcar todos como presentes (con confirmación si ya hay marcados)
+// ✅ Marcar todos como presentes (con confirmación)
 let marcandoTodos = false;
 
 function marcarTodosPresentes() {
     if (marcandoTodos) return;
     marcandoTodos = true;
 
-    // ✅ CORRECCIÓN: Comparar strings directamente
     const hoyStr = new Date().toISOString().split('T')[0];
 
     if (fechaSel > hoyStr) {
@@ -527,38 +480,33 @@ function marcarTodosPresentes() {
         return;
     }
 
-    // Verificar si hay alumnos ya marcados
     const yaMarcados = alumnos.filter(a => a.estado).length;
     const pendientes = alumnos.filter(a => !a.estado).length;
 
     if (yaMarcados > 0 && pendientes === 0) {
-        // Todos ya están marcados, preguntar si quiere sobreescribir todo
         tg.showConfirm(
             'Todos los alumnos ya tienen asistencia marcada (' + yaMarcados + '). ¿Querés sobreescribir TODOS como Presente?',
             function(confirmado) {
                 if (confirmado) {
-                    ejecutarMarcarTodosPresentes(true); // true = forzar sobreescritura
+                    ejecutarMarcarTodosPresentes(true);
                 } else {
                     marcandoTodos = false;
                 }
             }
         );
     } else if (yaMarcados > 0 && pendientes > 0) {
-        // Hay algunos marcados y algunos pendientes
         tg.showConfirm(
             'Ya hay ' + yaMarcados + ' alumnos marcados y ' + pendientes + ' pendientes. ¿Marcar TODOS como Presente (sobreescribiendo los ya marcados)?',
             function(confirmado) {
                 if (confirmado) {
-                    ejecutarMarcarTodosPresentes(true); // true = forzar sobreescritura
+                    ejecutarMarcarTodosPresentes(true);
                 } else {
-                    // Solo marcar los pendientes
-                    ejecutarMarcarTodosPresentes(false); // false = solo pendientes
+                    ejecutarMarcarTodosPresentes(false);
                 }
             }
         );
     } else {
-        // Nadie marcado aún, marcar todos directamente
-        ejecutarMarcarTodosPresentes(false); // false = solo pendientes (que son todos)
+        ejecutarMarcarTodosPresentes(false);
     }
 }
 
@@ -588,12 +536,10 @@ function ejecutarMarcarTodosPresentes(forzarSobreescribir) {
     setTimeout(() => { marcandoTodos = false; }, 500);
 }
 
-
 // ==================== INICIAR ====================
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
             init();
-        }</script>
-</body>
-</html>
+        }
+    
