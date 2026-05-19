@@ -1,7 +1,7 @@
 import os, hashlib, hmac, urllib.parse, json, logging
 from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from supabase import create_client
 from datetime import datetime, timedelta
 
@@ -56,7 +56,12 @@ def validar_telegram(init_data: str):
         logger.error(f"Error validando Telegram: {e}")
         return {"valid": False, "error": str(e)}
 
-# Endpoints existentes
+# ============================================================
+# 🚨 FIX: Endpoint raíz para health check de Render
+# ============================================================
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "Asistencia Escolar API", "modo": "online"}
 
 @app.get("/api/")
 async def health():
