@@ -263,15 +263,19 @@
             const f = new Date(fechaSel + 'T00:00:00');
             const display = document.getElementById('fecha-display');
             if (display) display.textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-            const hoy = new Date().toISOString().split('T')[0];
+
+            // ✅ CORRECCIÓN: Comparar strings directamente, no objetos Date (evita problemas de zona horaria)
+            const hoyStr = new Date().toISOString().split('T')[0];
+
             const badge = document.getElementById('solo-lectura');
             const btn = document.getElementById('btn-guardar');
             if (!badge || !btn) return;
-            if (fechaSel === hoy) {
+
+            if (fechaSel === hoyStr) {
                 badge.style.display = 'none';
                 btn.disabled = false;
                 btn.textContent = '💾 Guardar';
-            } else if (fechaSel < hoy) {
+            } else if (fechaSel < hoyStr) {
                 badge.style.display = 'block';
                 badge.textContent = '👁️ Cargando asistencia histórica';
                 btn.disabled = false;
@@ -283,8 +287,7 @@
                 btn.textContent = '🔒 Bloqueado';
             }
         }
-        
-        function irAHoy() {
+function irAHoy() {
             fechaSel = new Date().toISOString().split('T')[0];
             const input = document.getElementById('fecha-input');
             if (input) input.value = fechaSel;
@@ -352,25 +355,53 @@
                 const card = document.createElement('div');
                 card.className = 'card' + (a.estado ? ' completo' : '');
                 card.style.animationDelay = (i * 0.03) + 's';
-                let btns = '';
-                // ✅ 5 estados: P, A, T, J, E
-                // Dentro de renderizar(), reemplazá el forEach de botones por esto:
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'card-header';
+                header.innerHTML = `<div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div>`;
+
+                // Botones container
+                const estadosDiv = document.createElement('div');
+                estadosDiv.className = 'estados';
+
+                // Crear botones con addEventListener (más robusto que onclick inline)
                 ['P','A','T','J','E'].forEach(cod => {
-                    const sel = a.estado === cod ? estados[cod].cls : '';
-                    const dis = fechaSel > new Date().toISOString().split('T')[0] ? 'disabled' : '';
-                    // ✅ Agregamos ontouchstart para compatibilidad móvil
-                    btns += `<button class="${sel}" ${dis} onclick="marcar(${a.id}, '${cod}', this)" ontouchstart="marcar(${a.id}, '${cod}', this)"><span>${estados[cod].icon}</span><small>${estados[cod].label}</small></button>`;
+                    const btn = document.createElement('button');
+                    btn.innerHTML = `<span>${estados[cod].icon}</span><small>${estados[cod].label}</small>`;
+                    btn.className = a.estado === cod ? estados[cod].cls : '';
+
+                    // ✅ CORRECCIÓN: Comparación de fechas con strings, no objetos Date
+                    const hoyStr = new Date().toISOString().split('T')[0];
+                    if (fechaSel > hoyStr) btn.disabled = true;
+
+                    // ✅ CORRECCIÓN: addEventListener en lugar de onclick inline
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        marcar(a.id, cod, this);
+                    });
+
+                    // Touch para Android (sin ontouchstart inline)
+                    btn.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        marcar(a.id, cod, this);
+                    }, {passive: false});
+
+                    estadosDiv.appendChild(btn);
                 });
-        
-        // Re-aplicar filtro de búsqueda si hay texto
-        const busquedaTexto = document.getElementById('busqueda-input')?.value || '';
-        if (busquedaTexto) filtrarBusqueda();
-                card.innerHTML = `<div class="card-header"><div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div></div><div class="estados">${btns}</div>`;
+
+                card.appendChild(header);
+                card.appendChild(estadosDiv);
                 container.appendChild(card);
             });
+
+            // Re-aplicar filtro de búsqueda si hay texto
+            const busquedaTexto = document.getElementById('busqueda-input')?.value || '';
+            if (busquedaTexto) filtrarBusqueda();
         }
-        
-        function marcar(id, estado, btn) {
+function marcar(id, estado, btn) {
             console.log('📱 TOUCH: marcar(', id, estado, ')');  // ← Agregar esto
             const a = alumnos.find(x => x.id === id);
             if (!a) return;
@@ -484,11 +515,10 @@ function marcarTodosPresentes() {
     if (marcandoTodos) return;
     marcandoTodos = true;
 
+    // ✅ CORRECCIÓN: Comparar strings directamente
     const hoyStr = new Date().toISOString().split('T')[0];
-    const hoyDate = new Date(hoyStr + 'T00:00:00');
-    const selDate = new Date(fechaSel + 'T00:00:00');
 
-    if (selDate > hoyDate) {
+    if (fechaSel > hoyStr) {
         tg.showAlert('No se puede marcar asistencia futura');
         marcandoTodos = false;
         return;
