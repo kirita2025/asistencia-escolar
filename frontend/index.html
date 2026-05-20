@@ -362,7 +362,7 @@
             <div class="modal-body">
                 <p id="justificacion-alumno" style="margin-bottom:12px;font-weight:700;"></p>
                 <textarea id="justificacion-nota" placeholder="Motivo de la justificación..." style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-family:inherit;min-height:80px;resize:vertical;"></textarea>
-                <input type="file" id="justificacion-archivo" class="justificacion-input" accept="image/*" onchange="previewArchivo(this)">
+                <input type="file" id="justificacion-archivo" class="justificacion-input" accept="image/*" capture="camera" onchange="previewArchivo(this)">
                 <button class="btn-adjuntar" onclick="document.getElementById('justificacion-archivo').click()">📷 Adjuntar foto</button>
                 <div id="justificacion-preview"></div>
                 <button class="btn-modal" onclick="guardarJustificacion()">Guardar Justificación</button>
@@ -616,18 +616,18 @@
                     estadosDiv.appendChild(btn);
                 });
 
-                // Botón de justificación SIEMPRE visible (no solo en estado J)
-                const btnJust = document.createElement('button');
-                btnJust.className = 'btn-adjuntar';
-                btnJust.textContent = a.estado === 'J' ? '📷 Ver Justificación' : '📷 Justificación';
-                btnJust.style.gridColumn = '1 / -1'; // Ocupa toda la fila
-                btnJust.style.marginTop = '6px';
-                btnJust.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    abrirJustificacion(a.id);
-                });
-                estadosDiv.appendChild(btnJust);
+                // Botón de justificación para estado J
+                if (a.estado === 'J') {
+                    const btnJust = document.createElement('button');
+                    btnJust.className = 'btn-adjuntar';
+                    btnJust.textContent = '📷 Justificación';
+                    btnJust.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        abrirJustificacion(a.id);
+                    });
+                    estadosDiv.appendChild(btnJust);
+                }
 
                 card.appendChild(header);
                 card.appendChild(estadosDiv);
@@ -932,9 +932,14 @@
         // ==================== 📝 JUSTIFICACIÓN CON NOTA Y FOTO ====================
         function abrirJustificacion(alumnoId) {
             const alumno = alumnos.find(a => a.id === alumnoId);
-            if (!alumno) return;
+            if (!alumno) {
+                console.error('Alumno no encontrado:', alumnoId);
+                return;
+            }
 
             alumnoJustificacionId = alumnoId;
+            console.log('Abriendo justificacion para alumno:', alumnoId, alumno.nombre);
+
             document.getElementById('justificacion-alumno').textContent = alumno.nombre + ' ' + (alumno.apellido_paterno || '');
             document.getElementById('justificacion-nota').value = '';
             document.getElementById('justificacion-preview').innerHTML = '';
@@ -963,10 +968,18 @@
                 return;
             }
 
+            // DEBUG: Verificar que tenemos los datos
+            console.log('Guardando justificacion:', {
+                alumno_id: alumnoJustificacionId,
+                fecha: fechaSel,
+                nota: nota,
+                tieneArchivo: archivoInput.files.length > 0
+            });
+
             const formData = new FormData();
-            formData.append('alumno_id', alumnoJustificacionId);
+            formData.append('alumno_id', String(alumnoJustificacionId));
             formData.append('fecha', fechaSel);
-            formData.append('nota', nota);
+            formData.append('nota', nota || '');
             if (archivoInput.files.length) {
                 formData.append('archivo', archivoInput.files[0]);
             }
@@ -983,9 +996,11 @@
                     cerrarModal('modal-justificacion');
                 } else {
                     tg.showAlert('❌ Error: ' + d.message);
+                    console.error('Error del servidor:', d);
                 }
             } catch (e) {
                 tg.showAlert('Error guardando: ' + e.message);
+                console.error('Error fetch:', e);
             }
         }
 
