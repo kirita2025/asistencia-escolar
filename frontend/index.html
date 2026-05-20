@@ -283,13 +283,17 @@
     </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <div class="app">
         <header class="header">
             <div class="status-bar">
                 <span id="hora">--:--</span>
-                <span id="modo-badge" class="modo-badge">🟡 Conectando...</span>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button onclick="abrirQRScanner()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 10px;border-radius:10px;font-size:0.7rem;cursor:pointer;font-weight:600;">📷 QR</button>
+                    <span id="modo-badge" class="modo-badge">🟡 Conectando...</span>
+                </div>
             </div>
             <h1>📚 Control de Asistencia</h1>
             <div class="fecha" id="fecha-display">Cargando...</div>
