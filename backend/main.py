@@ -229,7 +229,7 @@ async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, s
         logger.error(f"Error reporte: {e}")
         return []
 
-# Justificacion con nota y archivo
+# Justificacion  con  nota y archivo
 
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
