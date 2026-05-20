@@ -8,15 +8,13 @@
     
     <!-- Atrapador Global de Errores Visuales -->
     <script>
-        // 1. Atrapa errores de ejecución de código (ej: una variable no definida)
         window.addEventListener('error', function(e) {
             const b = document.getElementById('modo-badge');
-            if(b) b.textContent = '🔴 Error JS'; // Cambia el estado a rojo
+            if(b) b.textContent = '🔴 Error JS';
             const l = document.getElementById('lista');
             if(l) l.innerHTML = '<div class="error-msg"><b>Error de Código:</b><br>' + e.message + '</div>';
         });
 
-        // 2. Atrapa errores en peticiones de red o promesas fallidas (ej: fallo al conectar a tu API en Render)
         window.addEventListener('unhandledrejection', function(e) {
             const b = document.getElementById('modo-badge');
             if(b) b.textContent = '🔴 Promesa Rota';
@@ -73,7 +71,6 @@
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; }
-        /* Mejorar respuesta táctil en móviles */
         .estados button {
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
@@ -83,7 +80,6 @@
             transform: scale(0.95);
             transition: transform 0.1s ease;
         }
-        /* 🔍 Barra de búsqueda */
         .busqueda-bar {
             display: flex;
             gap: 8px;
@@ -126,7 +122,6 @@
             from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        /* 📊 Modal de reporte */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -226,13 +221,12 @@
         .est-t { background: #ff9800; }
         .est-j { background: #2196f3; }
         .est-e { background: #9c27b0; }
-        /* 📷 Input de archivo para justificación */
         .justificacion-input {
             display: none;
         }
         .btn-adjuntar {
-            font-size: 0.65rem;
-            padding: 4px 8px;
+            font-size: 0.75rem;
+            padding: 6px 10px;
             background: #f0f0f0;
             border: 1px solid #ddd;
             border-radius: 6px;
@@ -246,45 +240,7 @@
             border-radius: 6px;
             margin-top: 4px;
         }
-        /* 📱 QR Scanner */
-        .qr-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.9);
-            z-index: 3000;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .qr-overlay.show { display: flex; }
-        .qr-video {
-            width: 100%;
-            max-width: 300px;
-            border-radius: 12px;
-        }
-        .qr-instructions {
-            color: white;
-            margin-top: 16px;
-            font-size: 0.9rem;
-            text-align: center;
-        }
-        .btn-cerrar-qr {
-            margin-top: 20px;
-            padding: 12px 24px;
-            background: #f44336;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            font-family: inherit;
-        }
     </style>
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
 </head>
 <body>
     <div class="app">
@@ -312,7 +268,6 @@
             <select id="seccion"><option value="">Todas</option></select>
             <button class="btn-cargar" onclick="cargar()">Cargar</button>
         </div>
-        <!-- 🔍 Barra de búsqueda -->
         <div class="busqueda-bar" id="busqueda-container" style="display:none;">
             <input type="text" id="busqueda-input" placeholder="🔍 Buscar alumno..." autocomplete="off">
             <button id="btn-todos-presentes" class="btn-todos-p">✅ Todos</button>
@@ -328,12 +283,11 @@
         <div class="lista" id="lista"><div class="loading">Seleccioná grado/sección y tocá "Cargar"</div></div>
         <div class="acciones">
             <button class="btn-guardar" id="btn-guardar" onclick="guardar()">💾 Guardar</button>
-            <button class="btn-stats" onclick="stats()">📊 Stats</button>
+            <button class="btn-stats" onclick="abrirReporte()">📊 Stats</button>
         </div>
         <div class="toast" id="toast"></div>
     </div>
 
-    <!-- 📊 Modal de Reporte -->
     <div class="modal-overlay" id="modal-reporte">
         <div class="modal">
             <div class="modal-header">
@@ -352,7 +306,6 @@
         </div>
     </div>
 
-    <!-- 📷 Modal de Justificación -->
     <div class="modal-overlay" id="modal-justificacion">
         <div class="modal">
             <div class="modal-header">
@@ -362,7 +315,7 @@
             <div class="modal-body">
                 <p id="justificacion-alumno" style="margin-bottom:12px;font-weight:700;"></p>
                 <textarea id="justificacion-nota" placeholder="Motivo de la justificación..." style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-family:inherit;min-height:80px;resize:vertical;"></textarea>
-                <input type="file" id="justificacion-archivo" class="justificacion-input" accept="image/*" onchange="previewArchivo(this)">
+                <input type="file" id="justificacion-archivo" class="justificacion-input" accept="image/*" capture="camera" onchange="previewArchivo(this)">
                 <button class="btn-adjuntar" onclick="document.getElementById('justificacion-archivo').click()">📷 Adjuntar foto</button>
                 <div id="justificacion-preview"></div>
                 <button class="btn-modal" onclick="guardarJustificacion()">Guardar Justificación</button>
@@ -370,11 +323,7 @@
         </div>
     </div>
 
-    <!-- 📱 QR Scanner Nativo de Telegram - No requiere overlay HTML -->
-
     <script>
-        // ===================== CONFIGURACIÓN ====================
-        // ⚠️ IMPORTANTE: Cambiá esta URL por la de tu backend en Render
         const API = 'https://bot-proveedores-backend.onrender.com/api';
         const tg = window.Telegram.WebApp;
         let user = null;
@@ -391,7 +340,6 @@
             E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
         };
 
-        // ==================== INICIALIZACIÓN ====================
         function init() {
             console.log('🚀 Iniciando Mini App...');
             tg.ready();
@@ -433,7 +381,6 @@
                 cargarFiltros();
             }).catch(err => {
                 console.error('Error init:', err);
-                // Aun asi continuar
                 verificarConexion();
                 cargarFiltros();
             });
@@ -449,7 +396,6 @@
                 console.log('🔑 Autenticando...');
                 const initData = tg.initData || '';
 
-                // Si no hay initData (ej: abriendo desde navegador), modo dev
                 if (!initData) {
                     console.warn('⚠️ No initData, modo desarrollo');
                     user = {id: 0, first_name: 'Modo Dev', username: 'dev'};
@@ -472,7 +418,6 @@
                 }
             } catch (e) {
                 console.error('❌ Auth error:', e);
-                // NUNCA bloquear la app, usar modo dev
                 user = {id: 0, first_name: 'Modo Dev', username: 'dev'};
             }
         }
@@ -616,10 +561,10 @@
                     estadosDiv.appendChild(btn);
                 });
 
-                // Botón de justificación SIEMPRE visible
+                // Boton de justificacion - SIEMPRE dice lo mismo para todos
                 const btnJust = document.createElement('button');
                 btnJust.className = 'btn-adjuntar';
-                btnJust.textContent = a.estado === 'J' ? '📷 Ver Justificación' : '📷 Justificación';
+                btnJust.textContent = '📷 Justificación';
                 btnJust.style.marginTop = '8px';
                 btnJust.style.width = '100%';
                 btnJust.addEventListener('click', function(e) {
@@ -628,7 +573,6 @@
                     abrirJustificacion(a.id);
                 });
 
-                // Crear un div contenedor para el botón, fuera del grid
                 const justDiv = document.createElement('div');
                 justDiv.style.marginTop = '6px';
                 justDiv.appendChild(btnJust);
@@ -650,7 +594,7 @@
             a.estado = estado;
             const card = btn.closest('.card');
             if (card) {
-                card.querySelectorAll('button').forEach(b => b.className = '');
+                card.querySelectorAll('.estados button').forEach(b => b.className = '');
                 btn.classList.add(estados[estado].cls);
                 card.classList.add('completo');
             }
@@ -724,7 +668,6 @@
             if (lista) lista.innerHTML = `<div class="error">${msg}</div>`;
         }
 
-        // 🔍 Filtrar alumnos por búsqueda
         function filtrarBusqueda() {
             const texto = document.getElementById('busqueda-input').value.toLowerCase().trim();
             const cards = document.querySelectorAll('.card');
@@ -749,7 +692,6 @@
             }
         }
 
-        // ✅ Marcar todos como presentes (con confirmación)
         let marcandoTodos = false;
 
         function marcarTodosPresentes() {
@@ -820,10 +762,8 @@
             setTimeout(() => { marcandoTodos = false; }, 500);
         }
 
-        // ==================== 📊 REPORTE SEMANAL/MENSUAL ====================
         function abrirReporte() {
             document.getElementById('modal-reporte').classList.add('show');
-            // Setear fechas por defecto (última semana)
             const hoy = new Date();
             const hace7dias = new Date(hoy.getTime() - 7 * 24 * 60 * 60 * 1000);
             document.getElementById('reporte-hasta').value = hoy.toISOString().split('T')[0];
@@ -849,7 +789,6 @@
             try {
                 document.getElementById('reporte-contenido').innerHTML = '<div class="loading">⏳ Generando reporte...</div>';
 
-                // Obtener asistencia en rango de fechas
                 const params = new URLSearchParams();
                 params.append('desde', desde);
                 params.append('hasta', hasta);
@@ -902,7 +841,6 @@
             document.getElementById('reporte-contenido').innerHTML = html;
         }
 
-        // ==================== 📥 EXPORTAR CSV ====================
         function exportarCSV() {
             if (!reporteData || !reporteData.length) {
                 tg.showAlert('Primero generá el reporte');
@@ -912,7 +850,6 @@
             const desde = document.getElementById('reporte-desde').value;
             const hasta = document.getElementById('reporte-hasta').value;
 
-            // 1. Construimos el contenido del CSV
             let csv = 'Alumno,Matricula,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,\n';
 
             reporteData.forEach(row => {
@@ -920,11 +857,9 @@
                 csv += `"${row.nombre}",${row.matricula},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias}\n`;
             });
 
-            // 2. CREAMOS EL ARCHIVO (Todo esto debe ir DENTRO de la función)
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             
-            // 3. Descargamos el archivo
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
             link.setAttribute('download', `reporte_${desde}_al_${hasta}.csv`);
@@ -932,9 +867,8 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        } // <--- LA LLAVE DE CIERRE VA AQUÍ, AL FINAL DE TODO
+        }
 
-        // ==================== 📝 JUSTIFICACIÓN CON NOTA Y FOTO ====================
         function abrirJustificacion(alumnoId) {
             const alumno = alumnos.find(a => a.id === alumnoId);
             if (!alumno) {
@@ -980,9 +914,10 @@
                 tieneArchivo: archivoInput.files.length > 0
             });
 
+            // Construir FormData con los campos exactos que espera el backend
             const formData = new FormData();
-            formData.append('alumno_id', String(alumnoJustificacionId));
-            formData.append('fecha', String(fechaSel));
+            formData.append('alumno_id', alumnoJustificacionId);
+            formData.append('fecha', fechaSel);
             formData.append('nota', nota || 'Sin nota');
 
             if (archivoInput.files.length) {
@@ -1010,10 +945,7 @@
             }
         }
 
-        // ==================== 📱 QR SCANNER NATIVO DE TELEGRAM ====================
-
         function abrirQRScanner() {
-            // Verificar que estamos dentro de Telegram
             if (!tg.showScanQrPopup) {
                 tg.showAlert('El escaner QR solo funciona dentro de Telegram. Abri la app desde Telegram.');
                 return;
@@ -1022,21 +954,16 @@
             tg.showScanQrPopup({
                 text: 'Escanea el QR del alumno'
             }, function(text) {
-                // text = contenido del QR escaneado
                 if (text) {
                     procesarQR(text);
-                    return true; // Cierra el popup
+                    return true;
                 }
-                return false; // Mantiene el popup abierto
+                return false;
             });
         }
 
         function procesarQR(textoQR) {
-            // El QR debe contener la matricula del alumno
-            // Formato esperado: "MAT:1234" o simplemente "1234"
             const matricula = textoQR.replace('MAT:', '').replace('mat:', '').trim();
-
-            // Buscar alumno por matricula
             const alumno = alumnos.find(a => a.matricula === matricula);
 
             if (!alumno) {
@@ -1044,19 +971,13 @@
                 return;
             }
 
-            // Marcar como presente
             alumno.estado = 'P';
             renderizar();
             contar();
-
-            // Feedback al usuario
             tg.showAlert('✅ ' + alumno.nombre + ' ' + (alumno.apellido_paterno || '') + ' marcado Presente');
-
-            // Vibracion si esta disponible
             if (navigator.vibrate) navigator.vibrate(50);
         }
 
-        // ==================== INICIAR ====================
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
         } else {
