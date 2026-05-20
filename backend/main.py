@@ -1,5 +1,5 @@
 import os, hashlib, hmac, urllib.parse, json, logging
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from supabase import create_client
@@ -99,7 +99,6 @@ async def auth(request: Request):
 
         result = validar_telegram(init_data)
         if result["valid"]:
-            # CORREGIDO: Se utilizan comillas simples para acceder a la clave del diccionario dentro del f-string
             logger.info(f"Maestro autenticado: {result['user'].get('first_name')}")
             return {"success": True, "user": result["user"]}
         else:
@@ -230,44 +229,70 @@ async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, s
         logger.error(f"Error reporte: {e}")
         return []
 
-# Justificacion con nota y archivo
+# ============================================================
+# JUSTIFICACION - VERSION CORREGIDA
+# ============================================================
 
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
-    alumno_id: str = None,
-    fecha: str = None,
-    nota: str = None,
-    archivo: UploadFile = File(None)
+    alumno_id: int = Form(...),
+    fecha: str = Form(...),
+    nota: str = Form(default=""),
+    archivo: UploadFile = File(None),
+    user_id: int = Form(default=0)
 ):
     try:
         if not supabase:
             return {"success": False, "message": "Supabase no configurado"}
 
-        if not alumno_id or not fecha:
-            return {"success": False, "message": "Faltan datos requeridos"}
+        if alumno_id <= 0:
+            return {"success": False, "message": "alumno_id invalido"}
+
+        if not fecha or len(fecha) != 10:
+            return {"success": False, "message": "fecha invalida (formato YYYY-MM-DD)"}
+
+        logger.info(f"Justificacion recibida: alumno_id={alumno_id}, fecha={fecha}, nota={nota}, archivo={archivo.filename if archivo else 'ninguno'}")
 
         justificacion_data = {
             "alumno_id": alumno_id,
             "fecha": fecha,
             "nota": nota or "",
-            "user_id": 0,
+            "user_id": user_id,
             "created_at": datetime.now().isoformat()
         }
 
-        if archivo:
-            file_content = await archivo.read()
-            file_name = f"justificaciones/{alumno_id}_{fecha}_{archivo.filename}"
+        if archivo and archivo.filename:
+            try:
+                file_content = await archivo.read()
+                file_ext = os.path.splitext(archivo.filename)[1]
+                file_name = f"justificaciones/{alumno_id}_{fecha}_{int(datetime.now().timestamp())}{file_ext}"
 
-            supabase.storage.from_("justificaciones").upload(file_name, file_content)
-            justificacion_data["archivo_url"] = file_name
+                supabase.storage.from_("justificaciones").upload(
+                    file_name,
+                    file_content,
+                    {"content-type": archivo.content_type or "image/jpeg"}
+                )
+                justificacion_data["archivo_url"] = file_name
+                logger.info(f"Archivo subido: {file_name}")
+
+            except Exception as e:
+                logger.error(f"Error subiendo archivo: {e}")
 
         supabase.table("justificaciones").insert(justificacion_data).execute()
 
-        return {"success": True, "message": "Justificacion guardada"}
+        return {
+            "success": True,
+            "message": "Justificacion guardada correctamente",
+            "data": {
+                "alumno_id": alumno_id,
+                "fecha": fecha,
+                "tiene_archivo": "archivo_url" in justificacion_data
+            }
+        }
 
     except Exception as e:
         logger.error(f"Error justificacion: {e}")
-        return {"success": False, "message": str(e)}
+        return {"success": False, "message": f"Error del servidor: {str(e)}"}
 
 @app.get("/api/asistencia/justificacion")
 async def get_justificacion(alumno_id: str = None, fecha: str = None):
