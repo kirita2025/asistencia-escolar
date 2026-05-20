@@ -290,10 +290,7 @@
         <header class="header">
             <div class="status-bar">
                 <span id="hora">--:--</span>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <button onclick="abrirQRScanner()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 10px;border-radius:10px;font-size:0.7rem;cursor:pointer;font-weight:600;">📷 QR</button>
-                    <span id="modo-badge" class="modo-badge">🟡 Conectando...</span>
-                </div>
+                <span id="modo-badge" class="modo-badge">🟡 Conectando...</span>
             </div>
             <h1>📚 Control de Asistencia</h1>
             <div class="fecha" id="fecha-display">Cargando...</div>
@@ -369,12 +366,7 @@
         </div>
     </div>
 
-    <!-- 📱 QR Scanner -->
-    <div class="qr-overlay" id="qr-scanner">
-        <video id="qr-video" class="qr-video" autoplay playsinline></video>
-        <p class="qr-instructions">Escaneá el QR del alumno</p>
-        <button class="btn-cerrar-qr" onclick="cerrarQR()">✕ Cerrar</button>
-    </div>
+    <!-- 📱 QR Scanner Nativo de Telegram - No requiere overlay HTML -->
 
     <script>
         // ===================== CONFIGURACIÓN ====================
@@ -993,44 +985,37 @@
             }
         }
 
-        // ==================== 📱 QR SCANNER ====================
-        let qrStream = null;
+        // ==================== 📱 QR SCANNER NATIVO DE TELEGRAM ====================
 
-        async function abrirQRScanner() {
-            const overlay = document.getElementById('qr-scanner');
-            const video = document.getElementById('qr-video');
-
-            try {
-                qrStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
-                video.srcObject = qrStream;
-                overlay.classList.add('show');
-
-                // Simular escaneo (en producción usar librería como jsQR)
-                tg.showAlert('📷 Escaneá el QR del alumno\n\n(En esta versión, ingresá la matrícula manualmente)');
-
-                // Cerrar automáticamente después de 30 segundos
-                setTimeout(() => cerrarQR(), 30000);
-            } catch (e) {
-                tg.showAlert('No se pudo acceder a la cámara: ' + e.message);
+        function abrirQRScanner() {
+            // Verificar que estamos dentro de Telegram
+            if (!tg.showScanQrPopup) {
+                tg.showAlert('El escaner QR solo funciona dentro de Telegram. Abri la app desde Telegram.');
+                return;
             }
+
+            tg.showScanQrPopup({
+                text: 'Escanea el QR del alumno'
+            }, function(text) {
+                // text = contenido del QR escaneado
+                if (text) {
+                    procesarQR(text);
+                    return true; // Cierra el popup
+                }
+                return false; // Mantiene el popup abierto
+            });
         }
 
-        function cerrarQR() {
-            const overlay = document.getElementById('qr-scanner');
-            overlay.classList.remove('show');
-            if (qrStream) {
-                qrStream.getTracks().forEach(track => track.stop());
-                qrStream = null;
-            }
-        }
+        function procesarQR(textoQR) {
+            // El QR debe contener la matricula del alumno
+            // Formato esperado: "MAT:1234" o simplemente "1234"
+            const matricula = textoQR.replace('MAT:', '').replace('mat:', '').trim();
 
-        function procesarQR(matricula) {
-            // Buscar alumno por matrícula
+            // Buscar alumno por matricula
             const alumno = alumnos.find(a => a.matricula === matricula);
+
             if (!alumno) {
-                tg.showAlert('Alumno no encontrado: ' + matricula);
+                tg.showAlert('❌ Alumno no encontrado: ' + matricula);
                 return;
             }
 
@@ -1039,8 +1024,11 @@
             renderizar();
             contar();
 
-            tg.showAlert('✅ ' + alumno.nombre + ' marcado Presente');
-            cerrarQR();
+            // Feedback al usuario
+            tg.showAlert('✅ ' + alumno.nombre + ' ' + (alumno.apellido_paterno || '') + ' marcado Presente');
+
+            // Vibracion si esta disponible
+            if (navigator.vibrate) navigator.vibrate(50);
         }
 
         // ==================== INICIAR ====================
