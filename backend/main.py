@@ -1,11 +1,11 @@
 import os, hashlib, hmac, urllib.parse, json, logging
 from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse
 from supabase import create_client
 from datetime import datetime, timedelta
 
-# Configuraci車n inicial
+# Configuracion inicial
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conexi車n a Supabase
+# Conexion a Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
@@ -30,49 +30,49 @@ supabase = None
 if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        logger.info("? Supabase conectado")
+        logger.info("Supabase conectado")
     except Exception as e:
-        logger.error(f"? Error conectando Supabase: {e}")
+        logger.error(f"Error conectando Supabase: {e}")
 else:
-    logger.warning("?? SUPABASE_URL o SUPABASE_KEY no configurados")
+    logger.warning("SUPABASE_URL o SUPABASE_KEY no configurados")
 
-# Validaci車n de Telegram
+# Validacion de Telegram
 def validar_telegram(init_data: str):
     if not BOT_TOKEN:
         logger.warning("BOT_TOKEN no configurado. Auth en modo desarrollo.")
         parsed = urllib.parse.parse_qs(init_data)
-        user_str = parsed.get('user', [None])[0]
+        user_str = parsed.get("user", [None])[0]
         if user_str:
             return {"valid": True, "user": json.loads(user_str)}
         return {"valid": False, "error": "No user data"}
 
     try:
         parsed = urllib.parse.parse_qs(init_data)
-        received_hash = parsed.get('hash', [None])[0]
+        received_hash = parsed.get("hash", [None])[0]
         if not received_hash:
             return {"valid": False, "error": "No hash"}
 
-        data_to_check = {k: v[0] for k, v in parsed.items() if k != 'hash'}
-        data_check_string = '\n'.join([f"{k}={v}" for k, v in sorted(data_to_check.items())])
+        data_to_check = {k: v[0] for k, v in parsed.items() if k != "hash"}
+        data_check_string = "\n".join([f"{k}={v}" for k, v in sorted(data_to_check.items())])
 
         secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
         if calculated_hash != received_hash:
-            return {"valid": False, "error": "Hash inv芍lido"}
+            return {"valid": False, "error": "Hash invalido"}
 
-        return {"valid": True, "user": json.loads(data_check_string.get('user', '{}'))}
+        return {"valid": True, "user": json.loads(data_check_string.get("user", "{}"))}
     except Exception as e:
         logger.error(f"Error validando Telegram: {e}")
         return {"valid": False, "error": str(e)}
 
 # ============================================================
-# ?? ENDPOINTS RA赤Z - MUY IMPORTANTE PARA RENDER
+# ENDPOINTS RAIZ - MUY IMPORTANTE PARA RENDER
 # ============================================================
 
 @app.get("/", response_class=JSONResponse)
 async def root():
-    """Endpoint ra赤z para health check de Render"""
+    """Endpoint raiz para health check de Render"""
     return {
         "status": "ok",
         "service": "Asistencia Escolar API",
@@ -99,7 +99,7 @@ async def auth(request: Request):
 
         result = validar_telegram(init_data)
         if result["valid"]:
-            logger.info(f"Maestro autenticado: {result['user'].get('first_name')}")
+            logger.info(f"Maestro autenticado: {result["user"].get("first_name")}")
             return {"success": True, "user": result["user"]}
         else:
             return {"success": False, "message": result.get("error", "Auth fallida")}
@@ -111,7 +111,7 @@ async def get_alumnos(grado: str = None, seccion: str = None):
     try:
         if not supabase:
             return []
-        
+
         query = supabase.table("alumnos").select("*")
         if grado:
             query = query.eq("grado", grado)
@@ -129,7 +129,7 @@ async def get_asistencia(fecha: str = None, grado: str = None, seccion: str = No
     try:
         if not supabase:
             return {"asistencia": []}
-            
+
         query = supabase.table("asistencia").select("*")
         if fecha:
             query = query.eq("fecha", fecha)
@@ -155,7 +155,7 @@ async def registrar_asistencia(request: Request):
     try:
         if not supabase:
             return {"success": False, "message": "Supabase no configurado"}
-            
+
         body = await request.json()
         registros = body.get("registros", [])
         user_id = body.get("user_id", 0)
@@ -176,14 +176,14 @@ async def registrar_asistencia(request: Request):
         logger.error(f"Error DB: {e}")
         return {"success": False, "message": str(e)}
 
-# NUEVO: Reporte semanal/mensual
+# Reporte semanal/mensual
 
 @app.get("/api/asistencia/reporte")
 async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, seccion: str = None):
     try:
         if not supabase:
             return []
-            
+
         if not desde or not hasta:
             return []
 
@@ -229,7 +229,7 @@ async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, s
         logger.error(f"Error reporte: {e}")
         return []
 
-# NUEVO: Justificaci車n con nota y archivo
+# Justificacion con nota y archivo
 
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
@@ -241,7 +241,7 @@ async def guardar_justificacion(
     try:
         if not supabase:
             return {"success": False, "message": "Supabase no configurado"}
-            
+
         if not alumno_id or not fecha:
             return {"success": False, "message": "Faltan datos requeridos"}
 
@@ -262,7 +262,7 @@ async def guardar_justificacion(
 
         supabase.table("justificaciones").insert(justificacion_data).execute()
 
-        return {"success": True, "message": "Justificaci車n guardada"}
+        return {"success": True, "message": "Justificacion guardada"}
 
     except Exception as e:
         logger.error(f"Error justificacion: {e}")
@@ -273,7 +273,7 @@ async def get_justificacion(alumno_id: str = None, fecha: str = None):
     try:
         if not supabase:
             return []
-            
+
         query = supabase.table("justificaciones").select("*")
         if alumno_id:
             query = query.eq("alumno_id", alumno_id)
@@ -286,14 +286,14 @@ async def get_justificacion(alumno_id: str = None, fecha: str = None):
         logger.error(f"Error get justificacion: {e}")
         return []
 
-# NUEVO:   QR / Matr赤cula
+# QR / Matricula
 
 @app.get("/api/alumnos/matricula/{matricula}")
 async def get_alumno_by_matricula(matricula: str):
     try:
         if not supabase:
             return {"success": False, "message": "Supabase no configurado"}
-            
+
         response = supabase.table("alumnos").select("*").eq("matricula", matricula).single().execute()
 
         if response.data:
