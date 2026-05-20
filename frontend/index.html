@@ -352,7 +352,7 @@
     </div>
 
     <script>
-        // ==================== CONFIGURACIÓN ====================
+        // ===================== CONFIGURACIÓN ====================
         // ⚠️ IMPORTANTE: Cambiá esta URL por la de tu backend en Render
         const API = 'https://bot-proveedores-backend.onrender.com/api';
         const tg = window.Telegram.WebApp;
@@ -668,15 +668,7 @@
             const e = alumnos.filter(a => a.estado === 'E').length;
             const total = alumnos.length;
             const ft = document.getElementById('fecha-display')?.textContent || fechaSel;
-            tg.showAlert(`📊 ${ft}
-
-✅ Presentes: ${p}
-❌ Ausentes: ${au}
-⏰ Tardanzas: ${t}
-📝 Justificados: ${j}
-🚌 Excursiones: ${e}
-
-Total: ${total} alumnos`);
+            tg.showAlert(`📊 ${ft}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${au}\n⏰ Tardanzas: ${t}\n📝 Justificados: ${j}\n🚌 Excursiones: ${e}\n\nTotal: ${total} alumnos`);
         }
 
         function mostrarError(msg) {
@@ -872,29 +864,15 @@ Total: ${total} alumnos`);
             const desde = document.getElementById('reporte-desde').value;
             const hasta = document.getElementById('reporte-hasta').value;
 
-            let csv = 'Alumno,Matricula,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,
-';
+            let csv = 'Alumno,Matricula,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,\n';
 
             reporteData.forEach(row => {
                 const total = row.P + row.A + row.T + row.J + row.E;
-                csv += `"${row.nombre}",${row.matricula},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias}
-`;
+                csv += `"${row.nombre}",${row.matricula},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias}\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `asistencia_${desde}_a_${hasta}.csv`;
-            link.click();
-
-            const toast = document.getElementById('toast');
-            if (toast) {
-                toast.textContent = '📥 CSV descargado';
-                toast.style.background = '#4caf50';
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
-            }
-        }
 
         // ==================== 📝 JUSTIFICACIÓN CON NOTA Y FOTO ====================
         function abrirJustificacion(alumnoId) {
@@ -971,9 +949,7 @@ Total: ${total} alumnos`);
                 overlay.classList.add('show');
 
                 // Simular escaneo (en producción usar librería como jsQR)
-                tg.showAlert('📷 Escaneá el QR del alumno
-
-(En esta versión, ingresá la matrícula manualmente)');
+                tg.showAlert('📷 Escaneá el QR del alumno\n\n(En esta versión, ingresá la matrícula manualmente)');
 
                 // Cerrar automáticamente después de 30 segundos
                 setTimeout(() => cerrarQR(), 30000);
