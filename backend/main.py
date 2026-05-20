@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 from supabase import create_client
 from datetime import datetime, timedelta
 
-# Configuraci贸n inicial
+# Configuración inicial
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -20,13 +20,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conexi贸n a Supabase
+# Conexión a Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Validaci贸n de Telegram
+# Inicializar Supabase solo si hay credenciales
+supabase = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        logger.info("? Supabase conectado")
+    except Exception as e:
+        logger.error(f"? Error conectando Supabase: {e}")
+else:
+    logger.warning("?? SUPABASE_URL o SUPABASE_KEY no configurados")
+
+# Validación de Telegram
 def validar_telegram(init_data: str):
     if not BOT_TOKEN:
         logger.warning("BOT_TOKEN no configurado. Auth en modo desarrollo.")
@@ -49,19 +59,31 @@ def validar_telegram(init_data: str):
         calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
 
         if calculated_hash != received_hash:
-            return {"valid": False, "error": "Hash inv谩lido"}
+            return {"valid": False, "error": "Hash inválido"}
 
-        return {"valid": True, "user": json.loads(data_to_check.get('user', '{}'))}
+        return {"valid": True, "user": json.loads(data_check_string.get('user', '{}'))}
     except Exception as e:
         logger.error(f"Error validando Telegram: {e}")
         return {"valid": False, "error": str(e)}
 
 # ============================================================
-# 馃毃 FIX: Endpoint ra铆z para health check de Render
+# ?? ENDPOINTS RAíZ - MUY IMPORTANTE PARA RENDER
 # ============================================================
-@app.get("/")
+
+@app.get("/", response_class=JSONResponse)
 async def root():
-    return {"status": "ok", "service": "Asistencia Escolar API", "modo": "online"}
+    """Endpoint raíz para health check de Render"""
+    return {
+        "status": "ok",
+        "service": "Asistencia Escolar API",
+        "modo": "online",
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.head("/")
+async def root_head():
+    """HEAD request para health check de Render"""
+    return JSONResponse(content={"status": "ok"})
 
 @app.get("/api/")
 async def health():
@@ -87,6 +109,9 @@ async def auth(request: Request):
 @app.get("/api/alumnos")
 async def get_alumnos(grado: str = None, seccion: str = None):
     try:
+        if not supabase:
+            return []
+        
         query = supabase.table("alumnos").select("*")
         if grado:
             query = query.eq("grado", grado)
@@ -102,6 +127,9 @@ async def get_alumnos(grado: str = None, seccion: str = None):
 @app.get("/api/asistencia/hoy")
 async def get_asistencia(fecha: str = None, grado: str = None, seccion: str = None):
     try:
+        if not supabase:
+            return {"asistencia": []}
+            
         query = supabase.table("asistencia").select("*")
         if fecha:
             query = query.eq("fecha", fecha)
@@ -125,6 +153,9 @@ async def get_asistencia(fecha: str = None, grado: str = None, seccion: str = No
 @app.post("/api/asistencia/registrar")
 async def registrar_asistencia(request: Request):
     try:
+        if not supabase:
+            return {"success": False, "message": "Supabase no configurado"}
+            
         body = await request.json()
         registros = body.get("registros", [])
         user_id = body.get("user_id", 0)
@@ -150,6 +181,9 @@ async def registrar_asistencia(request: Request):
 @app.get("/api/asistencia/reporte")
 async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, seccion: str = None):
     try:
+        if not supabase:
+            return []
+            
         if not desde or not hasta:
             return []
 
@@ -195,7 +229,7 @@ async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, s
         logger.error(f"Error reporte: {e}")
         return []
 
-# NUEVO: Justificaci贸n con nota y archivo
+# NUEVO: Justificación con nota y archivo
 
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
@@ -205,6 +239,9 @@ async def guardar_justificacion(
     archivo: UploadFile = File(None)
 ):
     try:
+        if not supabase:
+            return {"success": False, "message": "Supabase no configurado"}
+            
         if not alumno_id or not fecha:
             return {"success": False, "message": "Faltan datos requeridos"}
 
@@ -225,7 +262,7 @@ async def guardar_justificacion(
 
         supabase.table("justificaciones").insert(justificacion_data).execute()
 
-        return {"success": True, "message": "Justificaci贸n guardada"}
+        return {"success": True, "message": "Justificación guardada"}
 
     except Exception as e:
         logger.error(f"Error justificacion: {e}")
@@ -234,6 +271,9 @@ async def guardar_justificacion(
 @app.get("/api/asistencia/justificacion")
 async def get_justificacion(alumno_id: str = None, fecha: str = None):
     try:
+        if not supabase:
+            return []
+            
         query = supabase.table("justificaciones").select("*")
         if alumno_id:
             query = query.eq("alumno_id", alumno_id)
@@ -246,11 +286,14 @@ async def get_justificacion(alumno_id: str = None, fecha: str = None):
         logger.error(f"Error get justificacion: {e}")
         return []
 
-# NUEVO: QR / Matr铆cula
+# NUEVO:   QR / Matrícula
 
 @app.get("/api/alumnos/matricula/{matricula}")
 async def get_alumno_by_matricula(matricula: str):
     try:
+        if not supabase:
+            return {"success": False, "message": "Supabase no configurado"}
+            
         response = supabase.table("alumnos").select("*").eq("matricula", matricula).single().execute()
 
         if response.data:
@@ -266,5 +309,6 @@ async def debug():
         "supabase_url": bool(SUPABASE_URL),
         "supabase_key": bool(SUPABASE_KEY),
         "bot_token": bool(BOT_TOKEN),
+        "supabase_connected": supabase is not None,
         "tables": ["alumnos", "asistencia", "justificaciones"]
     }
