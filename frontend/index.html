@@ -884,6 +884,7 @@
             const desde = document.getElementById('reporte-desde').value;
             const hasta = document.getElementById('reporte-hasta').value;
 
+            // 1. Construimos el contenido del CSV
             let csv = 'Alumno,Matricula,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,\n';
 
             reporteData.forEach(row => {
@@ -891,8 +892,19 @@
                 csv += `"${row.nombre}",${row.matricula},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias}\n`;
             });
 
+            // 2. CREAMOS EL ARCHIVO (Todo esto debe ir DENTRO de la función)
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
+            
+            // 3. Descargamos el archivo
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `reporte_${desde}_al_${hasta}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } // <--- LA LLAVE DE CIERRE VA AQUÍ, AL FINAL DE TODO
 
         // ==================== 📝 JUSTIFICACIÓN CON NOTA Y FOTO ====================
         function abrirJustificacion(alumnoId) {
