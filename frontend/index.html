@@ -284,6 +284,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <div class="app">
@@ -615,18 +616,18 @@
                     estadosDiv.appendChild(btn);
                 });
 
-                // Botón de justificación para estado J
-                if (a.estado === 'J') {
-                    const btnJust = document.createElement('button');
-                    btnJust.className = 'btn-adjuntar';
-                    btnJust.textContent = '📷 Justificación';
-                    btnJust.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        abrirJustificacion(a.id);
-                    });
-                    estadosDiv.appendChild(btnJust);
-                }
+                // Botón de justificación SIEMPRE visible (no solo en estado J)
+                const btnJust = document.createElement('button');
+                btnJust.className = 'btn-adjuntar';
+                btnJust.textContent = a.estado === 'J' ? '📷 Ver Justificación' : '📷 Justificación';
+                btnJust.style.gridColumn = '1 / -1'; // Ocupa toda la fila
+                btnJust.style.marginTop = '6px';
+                btnJust.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    abrirJustificacion(a.id);
+                });
+                estadosDiv.appendChild(btnJust);
 
                 card.appendChild(header);
                 card.appendChild(estadosDiv);
