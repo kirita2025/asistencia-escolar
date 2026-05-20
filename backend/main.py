@@ -99,7 +99,8 @@ async def auth(request: Request):
 
         result = validar_telegram(init_data)
         if result["valid"]:
-            logger.info(f"Maestro autenticado: {result["user"].get("first_name")}")
+            # CORREGIDO: Se utilizan comillas simples para acceder a la clave del diccionario dentro del f-string
+            logger.info(f"Maestro autenticado: {result['user'].get('first_name')}")
             return {"success": True, "user": result["user"]}
         else:
             return {"success": False, "message": result.get("error", "Auth fallida")}
@@ -229,7 +230,7 @@ async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, s
         logger.error(f"Error reporte: {e}")
         return []
 
-# Justificacion  con  nota y archivo
+# Justificacion con nota y archivo
 
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
