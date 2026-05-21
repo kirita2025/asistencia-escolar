@@ -235,17 +235,17 @@ async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, s
 
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
-    alumno_id: int = Form(...),
+    alumno_id: str = Form(...),           # ← str (UUID), no int
     fecha: str = Form(...),
     nota: str = Form(default=""),
     archivo: UploadFile = File(None),
-    user_id: int = Form(default=0)
+    user_id: str = Form(default="0")      # ← str tambien (o int si user_id es numero)
 ):
     try:
         if not supabase:
             return {"success": False, "message": "Supabase no configurado"}
 
-        if alumno_id <= 0:
+        if not alumno_id or len(alumno_id) < 5:  # UUID tiene 36 chars
             return {"success": False, "message": "alumno_id invalido"}
 
         if not fecha or len(fecha) != 10:
