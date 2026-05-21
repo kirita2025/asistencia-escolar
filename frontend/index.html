@@ -249,48 +249,6 @@
             background: #f9f9f9;
             border-radius: 6px;
         }
-        /* Estilos para el modal de descarga en Telegram */
-        .download-modal {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 3000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        .download-modal.show { display: flex; }
-        .download-box {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            width: 90%;
-            max-width: 360px;
-            text-align: center;
-        }
-        .download-box h3 { margin-bottom: 16px; color: #333; }
-        .download-link {
-            display: block;
-            padding: 14px;
-            margin: 8px 0;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 700;
-        }
-        .download-link.pdf { background: #f44336; }
-        .download-link.excel { background: #2196f3; }
-        .download-link.csv { background: #4caf50; }
-        .download-close {
-            margin-top: 12px;
-            padding: 10px 24px;
-            background: #f0f0f0;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
@@ -377,18 +335,6 @@
         </div>
     </div>
 
-    <!-- Modal de descarga para Telegram WebView -->
-    <div class="download-modal" id="download-modal">
-        <div class="download-box">
-            <h3 id="download-titulo">📥 Descargar Archivo</h3>
-            <a id="download-link" class="download-link" href="#" target="_blank">Descargar</a>
-            <p style="font-size: 0.8rem; color: #666; margin-top: 8px;">
-                Si no se descarga automáticamente, tocá el botón de arriba
-            </p>
-            <button class="download-close" onclick="cerrarDownloadModal()">Cerrar</button>
-        </div>
-    </div>
-
     <script>
         const API = 'https://bot-proveedores-backend.onrender.com/api';
         const SUPABASE_URL = 'https://jqxiqvbkyyxlzisfdrcr.supabase.co';
@@ -407,11 +353,6 @@
             J: { icon: '📝', label: 'Justificado', cls: 'sel-j' },
             E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
         };
-
-        // Detectar si estamos en Telegram WebView
-        function esTelegram() {
-            return tg.platform && tg.platform !== 'unknown';
-        }
 
         function init() {
             console.log('🚀 Iniciando Mini App...');
@@ -937,59 +878,6 @@
             document.getElementById('reporte-contenido').innerHTML = html;
         }
 
-        // ==================== 📥 UTILIDAD: DESCARGAR ARCHIVO (compatible con Telegram) ====================
-        
-        function descargarArchivo(blob, filename, tipo) {
-            // En navegador normal: descarga directa
-            // En Telegram WebView: mostrar modal con link para abrir en navegador externo
-            
-            const url = URL.createObjectURL(blob);
-            
-            if (!esTelegram()) {
-                // Navegador normal: descarga directa
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = filename;
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                setTimeout(() => URL.revokeObjectURL(url), 1000);
-                return;
-            }
-            
-            // Telegram: mostrar modal con opciones
-            const modal = document.getElementById('download-modal');
-            const linkEl = document.getElementById('download-link');
-            const titulo = document.getElementById('download-titulo');
-            
-            titulo.textContent = `📥 ${tipo}`;
-            linkEl.href = url;
-            linkEl.download = filename;
-            linkEl.textContent = `⬇️ ${filename}`;
-            
-            // Color según tipo
-            linkEl.className = 'download-link';
-            if (tipo.includes('PDF')) linkEl.classList.add('pdf');
-            else if (tipo.includes('Excel')) linkEl.classList.add('excel');
-            else if (tipo.includes('CSV')) linkEl.classList.add('csv');
-            
-            modal.classList.add('show');
-            
-            // Intentar abrir con tg.openLink (abre navegador externo)
-            setTimeout(() => {
-                try {
-                    tg.openLink(url, { try_instant_view: false });
-                } catch (e) {
-                    console.log('tg.openLink no disponible, usuario debe tocar el botón');
-                }
-            }, 100);
-        }
-
-        function cerrarDownloadModal() {
-            document.getElementById('download-modal').classList.remove('show');
-        }
-
         // ==================== 📄 EXPORTAR CSV ====================
         function exportarCSV() {
             if (!reporteData || !reporteData.length) {
@@ -1008,8 +896,7 @@
                 csv += `"${row.nombre}",${row.matricula},${row.grado},${row.seccion},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias},${porcentaje}%\n`;
             });
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            descargarArchivo(blob, `reporte_asistencia_${desde}_al_${hasta}.csv`, 'Descargar CSV');
+            descargarArchivo(csv, `reporte_asistencia_${desde}_al_${hasta}.csv`, 'text/csv;charset=utf-8;');
         }
 
         // ==================== 📕 EXPORTAR PDF ====================
@@ -1101,8 +988,9 @@
             doc.setTextColor(0);
             doc.text(`📊 Total días: ${totales.total}`, 110, finalY + 12);
 
+            // Guardar usando el helper compatible con Telegram
             const pdfBlob = doc.output('blob');
-            descargarArchivo(pdfBlob, `reporte_asistencia_${desde}_al_${hasta}.pdf`, 'Descargar PDF');
+            descargarBlob(pdfBlob, `reporte_asistencia_${desde}_al_${hasta}.pdf`, 'application/pdf');
         }
 
         // ==================== 📗 EXPORTAR EXCEL CON LINKS DE IMAGENES ====================
@@ -1243,9 +1131,91 @@
             XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
             // Generar blob y descargar
-            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const excelBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            descargarArchivo(excelBlob, `reporte_asistencia_${desde}_al_${hasta}.xlsx`, 'Descargar Excel');
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const excelBlob = new Blob([wbout], { type: 'application/octet-stream' });
+            descargarBlob(excelBlob, `reporte_asistencia_${desde}_al_${hasta}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        }
+
+        // ==================== 💾 HELPERS DE DESCARGA COMPATIBLES CON TELEGRAM ====================
+
+        /**
+         * Descarga texto/archivo funcionando en navegador normal y Telegram WebView
+         */
+        function descargarArchivo(contenido, nombreArchivo, mimeType) {
+            const blob = new Blob([contenido], { type: mimeType });
+            descargarBlob(blob, nombreArchivo, mimeType);
+        }
+
+        /**
+         * Descarga un Blob funcionando en navegador normal y Telegram WebView
+         * Usa múltiples estrategias: download link, openLink, y fallback
+         */
+        function descargarBlob(blob, nombreArchivo, mimeType) {
+            // Estrategia 1: URL.createObjectURL + anchor click (funciona en navegadores normales)
+            try {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = nombreArchivo;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                
+                // Simular click programático
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                });
+                a.dispatchEvent(clickEvent);
+                
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                console.log('✅ Descarga iniciada via blob URL:', nombreArchivo);
+                return;
+            } catch (e) {
+                console.warn('❌ Estrategia 1 falló:', e);
+            }
+
+            // Estrategia 2: Telegram WebApp openLink (para abrir en navegador externo)
+            try {
+                const url = URL.createObjectURL(blob);
+                if (tg && tg.openLink) {
+                    tg.openLink(url);
+                    console.log('✅ Descarga iniciada via tg.openLink:', nombreArchivo);
+                    return;
+                }
+            } catch (e) {
+                console.warn('❌ Estrategia 2 falló:', e);
+            }
+
+            // Estrategia 3: Convertir a base64 y usar data URI
+            try {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    const a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = nombreArchivo;
+                    a.target = '_blank';
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                    }, 100);
+                };
+                reader.readAsDataURL(blob);
+                console.log('✅ Descarga iniciada via data URL:', nombreArchivo);
+                return;
+            } catch (e) {
+                console.warn('❌ Estrategia 3 falló:', e);
+            }
+
+            // Fallback: mostrar error
+            tg.showAlert('No se pudo descargar el archivo. Probá desde un navegador externo.');
         }
 
         // ==================== 📝 CARGAR JUSTIFICACION EXISTENTE ====================
@@ -1310,7 +1280,7 @@
                 
                 infoDiv.style.display = 'block';
                 infoDiv.innerHTML = `
-                    <strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<<br>
+                    <strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<br>
                     <strong>👤 Por:</strong> Usuario #${existente.user_id || 'desconocido'}
                 `;
                 
