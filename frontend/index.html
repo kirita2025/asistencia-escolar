@@ -235,10 +235,18 @@
             font-family: inherit;
         }
         .adjunto-preview {
-            max-width: 60px;
-            max-height: 60px;
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 8px;
+            border: 1px solid #ddd;
+        }
+        .justificacion-info {
+            font-size: 0.8rem;
+            color: #666;
+            margin: 8px 0;
+            padding: 8px;
+            background: #f9f9f9;
             border-radius: 6px;
-            margin-top: 4px;
         }
     </style>
 </head>
@@ -309,28 +317,31 @@
     <div class="modal-overlay" id="modal-justificacion">
         <div class="modal">
             <div class="modal-header">
-                <h2>📝 Justificación</h2>
+                <h2 id="modal-justificacion-titulo">📝 Justificación</h2>
                 <button class="modal-close" onclick="cerrarModal('modal-justificacion')">✕</button>
             </div>
             <div class="modal-body">
                 <p id="justificacion-alumno" style="margin-bottom:12px;font-weight:700;"></p>
                 <textarea id="justificacion-nota" placeholder="Motivo de la justificación..." style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-family:inherit;min-height:80px;resize:vertical;"></textarea>
                 <input type="file" id="justificacion-archivo" class="justificacion-input" accept="image/*" capture="camera" onchange="previewArchivo(this)">
-                <button class="btn-adjuntar" onclick="document.getElementById('justificacion-archivo').click()">📷 Adjuntar foto</button>
+                <button class="btn-adjuntar" id="btn-adjuntar-foto" onclick="document.getElementById('justificacion-archivo').click()">📷 Adjuntar foto</button>
                 <div id="justificacion-preview"></div>
-                <button class="btn-modal" onclick="guardarJustificacion()">Guardar Justificación</button>
+                <div id="justificacion-info" class="justificacion-info" style="display:none;"></div>
+                <button class="btn-modal" id="btn-guardar-justificacion" onclick="guardarJustificacion()">Guardar Justificación</button>
             </div>
         </div>
     </div>
 
     <script>
         const API = 'https://bot-proveedores-backend.onrender.com/api';
+        const SUPABASE_URL = 'https://jqxiqvbkyyxlzisfdrcr.supabase.co';
         const tg = window.Telegram.WebApp;
         let user = null;
         let alumnos = [];
         let fechaSel = new Date().toISOString().split('T')[0];
         let alumnoJustificacionId = null;
         let reporteData = [];
+        let justificacionExistente = null;
 
         const estados = {
             P: { icon: '✅', label: 'Presente', cls: 'sel-p' },
@@ -561,7 +572,6 @@
                     estadosDiv.appendChild(btn);
                 });
 
-                // Boton de justificacion - SIEMPRE dice lo mismo para todos
                 const btnJust = document.createElement('button');
                 btnJust.className = 'btn-adjuntar';
                 btnJust.textContent = '📷 Justificación';
@@ -772,6 +782,30 @@
 
         function cerrarModal(id) {
             document.getElementById(id).classList.remove('show');
+            
+            if (id === 'modal-justificacion') {
+                setTimeout(() => {
+                    const notaInput = document.getElementById('justificacion-nota');
+                    notaInput.readOnly = false;
+                    notaInput.style.background = 'white';
+                    notaInput.value = '';
+                    
+                    document.getElementById('justificacion-preview').innerHTML = '';
+                    document.getElementById('justificacion-info').style.display = 'none';
+                    document.getElementById('justificacion-info').innerHTML = '';
+                    
+                    const btnAdjuntar = document.getElementById('btn-adjuntar-foto');
+                    btnAdjuntar.style.display = 'inline-block';
+                    
+                    const btnGuardar = document.getElementById('btn-guardar-justificacion');
+                    btnGuardar.textContent = 'Guardar Justificación';
+                    btnGuardar.onclick = guardarJustificacion;
+                    
+                    document.getElementById('modal-justificacion-titulo').textContent = '📝 Justificación';
+                    
+                    justificacionExistente = null;
+                }, 300);
+            }
         }
 
         async function generarReporte() {
@@ -869,7 +903,30 @@
             document.body.removeChild(link);
         }
 
-        function abrirJustificacion(alumnoId) {
+        // ==================== 📝 CARGAR JUSTIFICACION EXISTENTE ====================
+
+        async function cargarJustificacionExistente(alumnoId) {
+            try {
+                const params = new URLSearchParams();
+                params.append('alumno_id', alumnoId);
+                params.append('fecha', fechaSel);
+                
+                const r = await fetch(`${API}/asistencia/justificacion?${params}`);
+                const data = await r.json();
+                
+                if (data && data.length > 0) {
+                    return data[0];
+                }
+                return null;
+            } catch (e) {
+                console.error('Error cargando justificacion:', e);
+                return null;
+            }
+        }
+
+        // ==================== 📝 ABRIR JUSTIFICACION ====================
+
+        async function abrirJustificacion(alumnoId) {
             const alumno = alumnos.find(a => a.id === alumnoId);
             if (!alumno) {
                 console.error('Alumno no encontrado:', alumnoId);
@@ -877,13 +934,79 @@
             }
 
             alumnoJustificacionId = alumnoId;
-            console.log('Abriendo justificacion para:', alumnoId, alumno.nombre);
-
-            document.getElementById('justificacion-alumno').textContent = alumno.nombre + ' ' + (alumno.apellido_paterno || '');
-            document.getElementById('justificacion-nota').value = '';
-            document.getElementById('justificacion-preview').innerHTML = '';
-            document.getElementById('justificacion-archivo').value = '';
-
+            
+            const existente = await cargarJustificacionExistente(alumnoId);
+            justificacionExistente = existente;
+            
+            document.getElementById('justificacion-alumno').textContent = 
+                alumno.nombre + ' ' + (alumno.apellido_paterno || '');
+            
+            const notaInput = document.getElementById('justificacion-nota');
+            const previewDiv = document.getElementById('justificacion-preview');
+            const archivoInput = document.getElementById('justificacion-archivo');
+            const infoDiv = document.getElementById('justificacion-info');
+            const btnAdjuntar = document.getElementById('btn-adjuntar-foto');
+            const btnGuardar = document.getElementById('btn-guardar-justificacion');
+            const titulo = document.getElementById('modal-justificacion-titulo');
+            
+            notaInput.value = '';
+            previewDiv.innerHTML = '';
+            archivoInput.value = '';
+            infoDiv.style.display = 'none';
+            infoDiv.innerHTML = '';
+            
+            if (existente) {
+                // MODO VER JUSTIFICACION EXISTENTE
+                titulo.textContent = '👁️ Ver Justificación';
+                
+                notaInput.value = existente.nota || '';
+                notaInput.readOnly = true;
+                notaInput.style.background = '#f5f5f5';
+                
+                infoDiv.style.display = 'block';
+                infoDiv.innerHTML = `
+                    <strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<<br>
+                    <strong>👤 Por:</strong> Usuario #${existente.user_id || 'desconocido'}
+                `;
+                
+                if (existente.archivo_url) {
+                    const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${existente.archivo_url}`;
+                    
+                    previewDiv.innerHTML = `
+                        <div style="margin: 10px 0;">
+                            <img src="${imageUrl}" 
+                                 class="adjunto-preview" 
+                                 onclick="window.open('${imageUrl}', '_blank')"
+                                 alt="Justificacion"
+                                 style="cursor: pointer;">
+                            <p style="font-size: 0.75rem; color: #888; margin-top: 6px; text-align: center;">
+                                👆 Tocá la imagen para ver en tamaño completo
+                            </p>
+                        </div>
+                    `;
+                } else {
+                    previewDiv.innerHTML = '<p style="color: #888; font-size: 0.85rem; text-align: center; padding: 10px;">📝 Solo nota de texto, sin imagen adjunta</p>';
+                }
+                
+                btnAdjuntar.style.display = 'none';
+                
+                btnGuardar.textContent = '✅ Cerrar';
+                btnGuardar.onclick = function() { cerrarModal('modal-justificacion'); };
+                
+            } else {
+                // MODO CREAR NUEVA JUSTIFICACION
+                titulo.textContent = '📝 Nueva Justificación';
+                
+                notaInput.readOnly = false;
+                notaInput.style.background = 'white';
+                notaInput.placeholder = 'Motivo de la justificación...';
+                
+                btnAdjuntar.style.display = 'inline-block';
+                
+                btnGuardar.textContent = 'Guardar Justificación';
+                btnGuardar.onclick = guardarJustificacion;
+            }
+            
             document.getElementById('modal-justificacion').classList.add('show');
         }
 
@@ -914,7 +1037,6 @@
                 tieneArchivo: archivoInput.files.length > 0
             });
 
-            // Construir FormData con los campos exactos que espera el backend
             const formData = new FormData();
             formData.append('alumno_id', alumnoJustificacionId);
             formData.append('fecha', fechaSel);
