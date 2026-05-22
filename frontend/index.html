@@ -1042,22 +1042,28 @@
                 params.append('alumno_id', alumnoId);
                 params.append('fecha', fechaSel);
 
-                const r = await fetch(`${API}/asistencia/justificacion?${params}`);
+                const url = `${API}/asistencia/justificacion?${params}`;
+                console.log('🔍 [JUST] GET URL:', url);
+
+                const r = await fetch(url);
+                console.log('🔍 [JUST] GET status:', r.status, r.statusText);
+                console.log('🔍 [JUST] GET headers:', [...r.headers.entries()]);
 
                 if (!r.ok) {
-                    console.error('Error HTTP cargando justificacion:', r.status);
+                    const text = await r.text();
+                    console.error('❌ [JUST] GET error body:', text);
                     return null;
                 }
 
                 const data = await r.json();
-                console.log('DEBUG - Justificacion cargada:', data);
+                console.log('🔍 [JUST] GET data:', data);
 
                 if (Array.isArray(data) && data.length > 0) {
                     return data[0];
                 }
                 return null;
             } catch (e) {
-                console.error('Error cargando justificacion:', e);
+                console.error('❌ [JUST] GET exception:', e);
                 return null;
             }
         }
@@ -1164,7 +1170,7 @@
                 return;
             }
 
-            console.log('DEBUG - Guardando:', {
+            console.log('💾 [JUST] Guardando:', {
                 alumno_id: alumnoJustificacionId,
                 fecha: fechaSel,
                 nota: nota,
@@ -1178,6 +1184,14 @@
 
             if (archivoInput.files.length) {
                 formData.append('archivo', archivoInput.files[0], archivoInput.files[0].name);
+                console.log('💾 [JUST] Archivo adjunto:', archivoInput.files[0].name, archivoInput.files[0].size);
+            } else {
+                console.log('💾 [JUST] Sin archivo adjunto');
+            }
+
+            // Log FormData entries
+            for (let [key, value] of formData.entries()) {
+                console.log('💾 [JUST] FormData:', key, '=', typeof value === 'string' ? value : `[File: ${value.name}]`);
             }
 
             const btnGuardar = document.getElementById('btn-guardar-justificacion');
@@ -1186,10 +1200,14 @@
             btnGuardar.disabled = true;
 
             try {
+                console.log('💾 [JUST] Enviando POST a:', `${API}/asistencia/justificacion`);
                 const r = await fetch(`${API}/asistencia/justificacion`, {
                     method: 'POST',
                     body: formData
                 });
+
+                console.log('💾 [JUST] POST status:', r.status, r.statusText);
+                console.log('💾 [JUST] POST headers:', [...r.headers.entries()]);
 
                 let d;
                 const contentType = r.headers.get('content-type');
@@ -1197,11 +1215,11 @@
                     d = await r.json();
                 } else {
                     const text = await r.text();
-                    console.error('Respuesta no JSON:', text);
-                    throw new Error('El servidor respondio con error ' + r.status + ': ' + text.substring(0, 200));
+                    console.error('❌ [JUST] POST respuesta no-JSON:', text);
+                    throw new Error('Servidor respondio ' + r.status + ': ' + text.substring(0, 200));
                 }
 
-                console.log('DEBUG - Respuesta:', d);
+                console.log('💾 [JUST] POST data:', d);
 
                 if (r.ok && d.success) {
                     tg.showAlert('✅ Justificacion guardada');
@@ -1210,7 +1228,7 @@
                     tg.showAlert('❌ Error del servidor: ' + (d.detail || d.message || JSON.stringify(d)));
                 }
             } catch (e) {
-                console.error('DEBUG - Error:', e);
+                console.error('❌ [JUST] POST exception:', e);
                 tg.showAlert('Error guardando: ' + e.message);
             } finally {
                 btnGuardar.textContent = textoOriginal;
