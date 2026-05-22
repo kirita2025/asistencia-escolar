@@ -5,20 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Control de Asistencia</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Librerias para exportar PDF y Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <!-- Atrapador Global de Errores Visuales -->
     <script>
         window.addEventListener('error', function(e) {
             const b = document.getElementById('modo-badge');
             if(b) b.textContent = '🔴 Error JS';
             const l = document.getElementById('lista');
-            if(l) l.innerHTML = '<div class="error-msg"><b>Error de Código:</b><br>' + e.message + '</div>';
+            if(l) l.innerHTML = '<div class="error-msg"><b>Error de Codigo:</b><br>' + e.message + '</div>';
         });
-
         window.addEventListener('unhandledrejection', function(e) {
             const b = document.getElementById('modo-badge');
             if(b) b.textContent = '🔴 Promesa Rota';
@@ -26,7 +22,6 @@
             if(l) l.innerHTML = '<div class="error-msg"><b>Error de Red/API:</b><br>' + (e.reason || 'Desconocido') + '</div>';
         });
     </script>
-    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
@@ -75,181 +70,41 @@
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; }
-        .estados button {
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-            user-select: none;
-        }
-        .estados button:active {
-            transform: scale(0.95);
-            transition: transform 0.1s ease;
-        }
-        .busqueda-bar {
-            display: flex;
-            gap: 8px;
-            padding: 10px 16px;
-            background: white;
-            border-bottom: 1px solid #e8e8e8;
-            animation: fadeIn 0.3s ease;
-        }
-        .busqueda-bar input {
-            flex: 1;
-            padding: 10px 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            -webkit-appearance: none;
-            appearance: none;
-        }
+        .estados button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; }
+        .estados button:active { transform: scale(0.95); transition: transform 0.1s ease; }
+        .busqueda-bar { display: flex; gap: 8px; padding: 10px 16px; background: white; border-bottom: 1px solid #e8e8e8; animation: fadeIn 0.3s ease; }
+        .busqueda-bar input { flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.9rem; font-family: inherit; -webkit-appearance: none; appearance: none; }
         .busqueda-bar input:focus { outline: none; border-color: #667eea; }
-        .btn-todos-p {
-            padding: 10px 14px;
-            background: #4caf50;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 0.8rem;
-            white-space: nowrap;
-            -webkit-appearance: none;
-            appearance: none;
-        }
+        .btn-todos-p { padding: 10px 14px; background: #4caf50; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.8rem; white-space: nowrap; -webkit-appearance: none; appearance: none; }
         .btn-todos-p:active { transform: scale(0.95); }
-        .card.destacado {
-            box-shadow: 0 0 0 2px #667eea, 0 4px 12px rgba(102, 126, 234, 0.2);
-            transform: scale(1.02);
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
+        .card.destacado { box-shadow: 0 0 0 2px #667eea, 0 4px 12px rgba(102, 126, 234, 0.2); transform: scale(1.02); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; }
         .modal-overlay.show { display: flex; }
-        .modal {
-            background: white;
-            border-radius: 16px;
-            width: 90%;
-            max-width: 400px;
-            max-height: 80vh;
-            overflow-y: auto;
-            padding: 20px;
-            animation: modalIn 0.3s ease;
-        }
-        @keyframes modalIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
+        .modal { background: white; border-radius: 16px; width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto; padding: 20px; animation: modalIn 0.3s ease; }
+        @keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .modal-header h2 { font-size: 1.1rem; color: #333; }
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #888;
-        }
+        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; }
         .modal-body { font-size: 0.9rem; }
-        .reporte-filtros {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-        .reporte-filtros input {
-            flex: 1;
-            padding: 8px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 0.85rem;
-        }
-        .reporte-tabla {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8rem;
-        }
-        .reporte-tabla th {
-            background: #f5f5f5;
-            padding: 8px;
-            text-align: left;
-            font-weight: 700;
-            position: sticky;
-            top: 0;
-        }
-        .reporte-tabla td {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-        }
+        .reporte-filtros { display: flex; gap: 8px; margin-bottom: 16px; }
+        .reporte-filtros input { flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 0.85rem; }
+        .reporte-tabla { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .reporte-tabla th { background: #f5f5f5; padding: 8px; text-align: left; font-weight: 700; position: sticky; top: 0; }
+        .reporte-tabla td { padding: 8px; border-bottom: 1px solid #eee; }
         .reporte-tabla tr:hover { background: #f9f9f9; }
-        .btn-modal {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 8px;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
+        .btn-modal { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; font-size: 0.9rem; }
         .btn-exportar-csv { background: #4caf50; color: white; }
         .btn-exportar-pdf { background: #f44336; color: white; }
         .btn-exportar-excel { background: #2196f3; color: white; }
-        .estadistica-bar {
-            display: flex;
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 4px 0;
-        }
-        .est-p { background: #4caf50; }
-        .est-a { background: #f44336; }
-        .est-t { background: #ff9800; }
-        .est-j { background: #2196f3; }
-        .est-e { background: #9c27b0; }
-        .justificacion-input {
-            display: none;
-        }
-        .btn-adjuntar {
-            font-size: 0.75rem;
-            padding: 6px 10px;
-            background: #f0f0f0;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 4px;
-            font-family: inherit;
-        }
-        .adjunto-preview {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-top: 8px;
-            border: 1px solid #ddd;
-        }
-        .justificacion-info {
-            font-size: 0.8rem;
-            color: #666;
-            margin: 8px 0;
-            padding: 8px;
-            background: #f9f9f9;
-            border-radius: 6px;
-        }
+        .estadistica-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 4px 0; }
+        .est-p { background: #4caf50; } .est-a { background: #f44336; } .est-t { background: #ff9800; } .est-j { background: #2196f3; } .est-e { background: #9c27b0; }
+        .justificacion-input { display: none; }
+        .btn-adjuntar { font-size: 0.75rem; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; margin-top: 4px; font-family: inherit; }
+        .adjunto-preview { max-width: 100%; border-radius: 8px; margin-top: 8px; border: 1px solid #ddd; }
+        .justificacion-info { font-size: 0.8rem; color: #666; margin: 8px 0; padding: 8px; background: #f9f9f9; border-radius: 6px; }
     </style>
+<base target="_blank">
 </head>
 <body>
     <div class="app">
@@ -286,10 +141,10 @@
             <div><span class="num ausente" id="c-a">0</span><span class="label">Ausentes</span></div>
             <div><span class="num tardanza" id="c-t">0</span><span class="label">Tardanzas</span></div>
             <div><span class="num justificado" id="c-j">0</span><span class="label">Justificado</span></div>
-            <div><span class="num excursion" id="c-e">0</span><span class="label">Excursión</span></div>
+            <div><span class="num excursion" id="c-e">0</span><span class="label">Excursion</span></div>
             <div><span class="num pendiente" id="c-pend">0</span><span class="label">Pendientes</span></div>
         </div>
-        <div class="lista" id="lista"><div class="loading">Seleccioná grado/sección y tocá "Cargar"</div></div>
+        <div class="lista" id="lista"><div class="loading">Selecciona grado/seccion y toca "Cargar"</div></div>
         <div class="acciones">
             <button class="btn-guardar" id="btn-guardar" onclick="guardar()">💾 Guardar</button>
             <button class="btn-stats" onclick="abrirReporte()">📊 Stats</button>
@@ -320,22 +175,23 @@
     <div class="modal-overlay" id="modal-justificacion">
         <div class="modal">
             <div class="modal-header">
-                <h2 id="modal-justificacion-titulo">📝 Justificación</h2>
+                <h2 id="modal-justificacion-titulo">📝 Justificacion</h2>
                 <button class="modal-close" onclick="cerrarModal('modal-justificacion')">✕</button>
             </div>
             <div class="modal-body">
                 <p id="justificacion-alumno" style="margin-bottom:12px;font-weight:700;"></p>
-                <textarea id="justificacion-nota" placeholder="Motivo de la justificación..." style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-family:inherit;min-height:80px;resize:vertical;"></textarea>
+                <textarea id="justificacion-nota" placeholder="Motivo de la justificacion..." style="width:100%;padding:10px;border:2px solid #e0e0e0;border-radius:8px;font-family:inherit;min-height:80px;resize:vertical;"></textarea>
                 <input type="file" id="justificacion-archivo" class="justificacion-input" accept="image/*" capture="camera" onchange="previewArchivo(this)">
                 <button class="btn-adjuntar" id="btn-adjuntar-foto" onclick="document.getElementById('justificacion-archivo').click()">📷 Adjuntar foto</button>
                 <div id="justificacion-preview"></div>
                 <div id="justificacion-info" class="justificacion-info" style="display:none;"></div>
-                <button class="btn-modal" id="btn-guardar-justificacion" onclick="guardarJustificacion()">Guardar Justificación</button>
+                <button class="btn-modal" id="btn-guardar-justificacion" onclick="guardarJustificacion()">Guardar Justificacion</button>
             </div>
         </div>
     </div>
 
     <script>
+
         const API = 'https://bot-proveedores-backend.onrender.com/api';
         const SUPABASE_URL = 'https://jqxiqvbkyyxlzisfdrcr.supabase.co';
         const tg = window.Telegram.WebApp;
@@ -351,7 +207,7 @@
             A: { icon: '❌', label: 'Ausente', cls: 'sel-a' },
             T: { icon: '⏰', label: 'Tardanza', cls: 'sel-t' },
             J: { icon: '📝', label: 'Justificado', cls: 'sel-j' },
-            E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
+            E: { icon: '🚌', label: 'Excursion', cls: 'sel-e' }
         };
 
         function init() {
@@ -450,9 +306,9 @@
                 }
                 console.log('📡 Estado:', d);
             } catch (e) {
-                console.error('❌ Sin conexión:', e);
+                console.error('❌ Sin conexion:', e);
                 const badge = document.getElementById('modo-badge');
-                if (badge) badge.textContent = '🔴 Sin conexión';
+                if (badge) badge.textContent = '🔴 Sin conexion';
             }
         }
 
@@ -469,7 +325,7 @@
             if (fechaSel === hoyStr) {
                 badge.style.display = 'none'; btn.disabled = false; btn.textContent = '💾 Guardar';
             } else if (fechaSel < hoyStr) {
-                badge.style.display = 'block'; badge.textContent = '👁️ Cargando asistencia histórica';
+                badge.style.display = 'block'; badge.textContent = '👁️ Cargando asistencia historica';
                 btn.disabled = false; btn.textContent = '💾 Cargar atrasado';
             } else {
                 badge.style.display = 'block'; badge.textContent = '🔒 No se puede registrar asistencia futura';
@@ -495,7 +351,7 @@
                 const sg = document.getElementById('grado');
                 const ss = document.getElementById('seccion');
                 if (sg) grados.forEach(g => sg.add(new Option(g, g)));
-                if (ss) secciones.forEach(s => ss.add(new Option('Sección ' + s, s)));
+                if (ss) secciones.forEach(s => ss.add(new Option('Seccion ' + s, s)));
                 console.log('✅ Filtros cargados');
             } catch (e) { console.error('❌ Error filtros:', e); }
         }
@@ -577,7 +433,7 @@
 
                 const btnJust = document.createElement('button');
                 btnJust.className = 'btn-adjuntar';
-                btnJust.textContent = '📷 Justificación';
+                btnJust.textContent = '📷 Justificacion';
                 btnJust.style.marginTop = '8px';
                 btnJust.style.width = '100%';
                 btnJust.addEventListener('click', function(e) {
@@ -724,7 +580,7 @@
 
             if (yaMarcados > 0 && pendientes === 0) {
                 tg.showConfirm(
-                    'Todos los alumnos ya tienen asistencia marcada (' + yaMarcados + '). ¿Querés sobreescribir TODOS como Presente?',
+                    'Todos los alumnos ya tienen asistencia marcada (' + yaMarcados + '). ¿Queres sobreescribir TODOS como Presente?',
                     function(confirmado) {
                         if (confirmado) {
                             ejecutarMarcarTodosPresentes(true);
@@ -785,27 +641,27 @@
 
         function cerrarModal(id) {
             document.getElementById(id).classList.remove('show');
-            
+
             if (id === 'modal-justificacion') {
                 setTimeout(() => {
                     const notaInput = document.getElementById('justificacion-nota');
                     notaInput.readOnly = false;
                     notaInput.style.background = 'white';
                     notaInput.value = '';
-                    
+
                     document.getElementById('justificacion-preview').innerHTML = '';
                     document.getElementById('justificacion-info').style.display = 'none';
                     document.getElementById('justificacion-info').innerHTML = '';
-                    
+
                     const btnAdjuntar = document.getElementById('btn-adjuntar-foto');
                     btnAdjuntar.style.display = 'inline-block';
-                    
+
                     const btnGuardar = document.getElementById('btn-guardar-justificacion');
-                    btnGuardar.textContent = 'Guardar Justificación';
+                    btnGuardar.textContent = 'Guardar Justificacion';
                     btnGuardar.onclick = guardarJustificacion;
-                    
-                    document.getElementById('modal-justificacion-titulo').textContent = '📝 Justificación';
-                    
+
+                    document.getElementById('modal-justificacion-titulo').textContent = '📝 Justificacion';
+
                     justificacionExistente = null;
                 }, 300);
             }
@@ -816,7 +672,7 @@
             const hasta = document.getElementById('reporte-hasta').value;
 
             if (!desde || !hasta) {
-                tg.showAlert('Seleccioná fechas desde y hasta');
+                tg.showAlert('Selecciona fechas desde y hasta');
                 return;
             }
 
@@ -844,7 +700,7 @@
 
         function mostrarReporte(data) {
             if (!data || !data.length) {
-                document.getElementById('reporte-contenido').innerHTML = '<div class="loading">No hay datos en este período</div>';
+                document.getElementById('reporte-contenido').innerHTML = '<div class="loading">No hay datos en este periodo</div>';
                 return;
             }
 
@@ -881,7 +737,7 @@
         // ==================== 📄 EXPORTAR CSV ====================
         function exportarCSV() {
             if (!reporteData || !reporteData.length) {
-                tg.showAlert('Primero generá el reporte');
+                tg.showAlert('Primero genera el reporte');
                 return;
             }
 
@@ -902,7 +758,7 @@
         // ==================== 📕 EXPORTAR PDF ====================
         function exportarPDF() {
             if (!reporteData || !reporteData.length) {
-                tg.showAlert('Primero generá el reporte');
+                tg.showAlert('Primero genera el reporte');
                 return;
             }
 
@@ -914,33 +770,20 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            // Titulo
             doc.setFontSize(18);
             doc.text('Reporte de Asistencia', 14, 20);
-            
-            // Subtitulo
+
             doc.setFontSize(11);
             doc.setTextColor(100);
-            doc.text(`Período: ${desde} al ${hasta}`, 14, 28);
-            doc.text(`Grado: ${grado} | Sección: ${seccion}`, 14, 34);
+            doc.text(`Periodo: ${desde} al ${hasta}`, 14, 28);
+            doc.text(`Grado: ${grado} | Seccion: ${seccion}`, 14, 34);
             doc.text(`Generado: ${new Date().toLocaleString('es-ES')}`, 14, 40);
 
-            // Tabla
             const headers = [['Alumno', 'Mat.', 'P', 'A', 'T', 'J', 'E', 'Total', '%']];
             const body = reporteData.map(row => {
                 const total = row.P + row.A + row.T + row.J + row.E;
                 const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
-                return [
-                    row.nombre,
-                    row.matricula,
-                    row.P,
-                    row.A,
-                    row.T,
-                    row.J,
-                    row.E,
-                    total,
-                    porcentaje + '%'
-                ];
+                return [row.nombre, row.matricula, row.P, row.A, row.T, row.J, row.E, total, porcentaje + '%'];
             });
 
             doc.autoTable({
@@ -963,7 +806,6 @@
                 }
             });
 
-            // Totales
             const finalY = doc.lastAutoTable.finalY + 10;
             const totales = reporteData.reduce((acc, row) => {
                 acc.P += row.P; acc.A += row.A; acc.T += row.T;
@@ -986,34 +828,31 @@
             doc.setTextColor(156, 39, 176);
             doc.text(`🚌 Excursiones: ${totales.E}`, 60, finalY + 12);
             doc.setTextColor(0);
-            doc.text(`📊 Total días: ${totales.total}`, 110, finalY + 12);
+            doc.text(`📊 Total dias: ${totales.total}`, 110, finalY + 12);
 
-            // Guardar usando el helper compatible con Telegram
             const pdfBlob = doc.output('blob');
             descargarBlob(pdfBlob, `reporte_asistencia_${desde}_al_${hasta}.pdf`, 'application/pdf');
         }
 
-        // ==================== 📗 EXPORTAR EXCEL CON LINKS DE IMAGENES ====================
+        // ==================== 📗 EXPORTAR EXCEL ====================
         async function exportarExcel() {
             if (!reporteData || !reporteData.length) {
-                tg.showAlert('Primero generá el reporte');
+                tg.showAlert('Primero genera el reporte');
                 return;
             }
 
             const desde = document.getElementById('reporte-desde').value;
             const hasta = document.getElementById('reporte-hasta').value;
 
-            // Obtener justificaciones del período para agregar links
             let justificacionesMap = {};
             try {
                 const params = new URLSearchParams();
                 params.append('desde', desde);
                 params.append('hasta', hasta);
-                
+
                 const r = await fetch(`${API}/asistencia/justificacion?${params}`);
                 const justData = await r.json();
-                
-                // Crear mapa: alumno_id -> array de justificaciones
+
                 justData.forEach(j => {
                     if (!justificacionesMap[j.alumno_id]) {
                         justificacionesMap[j.alumno_id] = [];
@@ -1024,18 +863,16 @@
                 console.warn('No se pudieron cargar justificaciones para Excel:', e);
             }
 
-            // Preparar datos para Excel
             const excelData = reporteData.map(row => {
                 const total = row.P + row.A + row.T + row.J + row.E;
                 const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
-                
-                // Buscar justificaciones de este alumno
+
                 const justs = justificacionesMap[row.id] || [];
                 const linksImagenes = justs
                     .filter(j => j.archivo_url)
                     .map(j => `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${j.archivo_url}`)
                     .join('\n');
-                
+
                 const notas = justs.map(j => j.nota || '').filter(n => n).join(' | ');
 
                 return {
@@ -1056,81 +893,50 @@
                 };
             });
 
-            // Crear workbook
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(excelData);
 
-            // Ajustar anchos de columna
             const colWidths = [
-                { wch: 30 }, // Alumno
-                { wch: 12 }, // Matricula
-                { wch: 10 }, // Grado
-                { wch: 10 }, // Seccion
-                { wch: 10 }, // Presentes
-                { wch: 10 }, // Ausentes
-                { wch: 10 }, // Tardanzas
-                { wch: 12 }, // Justificados
-                { wch: 12 }, // Excursiones
-                { wch: 8 },  // Total
-                { wch: 8 },  // Dias
-                { wch: 12 }, // % Asistencia
-                { wch: 40 }, // Notas
-                { wch: 60 }  // Links Imagenes
+                { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
+                { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+                { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 12 },
+                { wch: 40 }, { wch: 60 }
             ];
             ws['!cols'] = colWidths;
 
-            // Hacer que los links sean clickeables (hipervinculos)
             const range = XLSX.utils.decode_range(ws['!ref']);
-            const linksCol = 13; // Columna N (Links Imagenes)
-            
+            const linksCol = 13;
+
             for (let R = range.s.r + 1; R <= range.e.r; ++R) {
                 const cellAddress = XLSX.utils.encode_cell({ r: R, c: linksCol });
                 const cell = ws[cellAddress];
-                
+
                 if (cell && cell.v && cell.v.includes('http')) {
-                    // Crear hyperlink
                     const links = cell.v.split('\n').filter(l => l.trim());
                     if (links.length > 0) {
                         cell.l = { Target: links[0] };
-                        cell.v = links.length > 1 ? `${links[0]} (+${links.length - 1} más)` : links[0];
+                        cell.v = links.length > 1 ? `${links[0]} (+${links.length - 1} mas)` : links[0];
                     }
                 }
             }
 
             XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
 
-            // Agregar hoja resumen
-            const resumenData = [{
-                'Metrica': 'Total Alumnos',
-                'Valor': reporteData.length
-            }, {
-                'Metrica': 'Total Presentes',
-                'Valor': reporteData.reduce((a, b) => a + b.P, 0)
-            }, {
-                'Metrica': 'Total Ausentes',
-                'Valor': reporteData.reduce((a, b) => a + b.A, 0)
-            }, {
-                'Metrica': 'Total Tardanzas',
-                'Valor': reporteData.reduce((a, b) => a + b.T, 0)
-            }, {
-                'Metrica': 'Total Justificados',
-                'Valor': reporteData.reduce((a, b) => a + b.J, 0)
-            }, {
-                'Metrica': 'Total Excursiones',
-                'Valor': reporteData.reduce((a, b) => a + b.E, 0)
-            }, {
-                'Metrica': 'Período',
-                'Valor': `${desde} al ${hasta}`
-            }, {
-                'Metrica': 'Generado',
-                'Valor': new Date().toLocaleString('es-ES')
-            }];
+            const resumenData = [
+                {'Metrica': 'Total Alumnos', 'Valor': reporteData.length},
+                {'Metrica': 'Total Presentes', 'Valor': reporteData.reduce((a, b) => a + b.P, 0)},
+                {'Metrica': 'Total Ausentes', 'Valor': reporteData.reduce((a, b) => a + b.A, 0)},
+                {'Metrica': 'Total Tardanzas', 'Valor': reporteData.reduce((a, b) => a + b.T, 0)},
+                {'Metrica': 'Total Justificados', 'Valor': reporteData.reduce((a, b) => a + b.J, 0)},
+                {'Metrica': 'Total Excursiones', 'Valor': reporteData.reduce((a, b) => a + b.E, 0)},
+                {'Metrica': 'Periodo', 'Valor': `${desde} al ${hasta}`},
+                {'Metrica': 'Generado', 'Valor': new Date().toLocaleString('es-ES')}
+            ];
 
             const wsResumen = XLSX.utils.json_to_sheet(resumenData);
             wsResumen['!cols'] = [{ wch: 25 }, { wch: 20 }];
             XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
-            // Generar blob y descargar
             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const excelBlob = new Blob([wbout], { type: 'application/octet-stream' });
             descargarBlob(excelBlob, `reporte_asistencia_${desde}_al_${hasta}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1138,20 +944,39 @@
 
         // ==================== 💾 HELPERS DE DESCARGA COMPATIBLES CON TELEGRAM ====================
 
-        /**
-         * Descarga texto/archivo funcionando en navegador normal y Telegram WebView
-         */
         function descargarArchivo(contenido, nombreArchivo, mimeType) {
             const blob = new Blob([contenido], { type: mimeType });
             descargarBlob(blob, nombreArchivo, mimeType);
         }
 
-        /**
-         * Descarga un Blob funcionando en navegador normal y Telegram WebView
-         * Usa múltiples estrategias: download link, openLink, y fallback
-         */
-        function descargarBlob(blob, nombreArchivo, mimeType) {
-            // Estrategia 1: URL.createObjectURL + anchor click (funciona en navegadores normales)
+        async function descargarBlob(blob, nombreArchivo, mimeType) {
+            const isTelegramWebView = !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
+
+            // Estrategia 0: Subir a backend y abrir URL publica (funciona en TODOS lados)
+            if (isTelegramWebView) {
+                try {
+                    const formData = new FormData();
+                    formData.append('archivo', blob, nombreArchivo);
+
+                    const r = await fetch(`${API}/upload-temp`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data.url) {
+                            tg.openLink(data.url, { try_instant_view: false });
+                            console.log('✅ Descarga via backend URL:', data.url);
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('❌ Estrategia backend fallo:', e);
+                }
+            }
+
+            // Estrategia 1: URL.createObjectURL + anchor click
             try {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1159,36 +984,27 @@
                 a.download = nombreArchivo;
                 a.style.display = 'none';
                 document.body.appendChild(a);
-                
-                // Simular click programático
-                const clickEvent = new MouseEvent('click', {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window
-                });
-                a.dispatchEvent(clickEvent);
-                
+                a.click();
                 setTimeout(() => {
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                 }, 100);
-                
-                console.log('✅ Descarga iniciada via blob URL:', nombreArchivo);
+                console.log('✅ Descarga via blob URL:', nombreArchivo);
                 return;
             } catch (e) {
-                console.warn('❌ Estrategia 1 falló:', e);
+                console.warn('❌ Estrategia blob fallo:', e);
             }
 
-            // Estrategia 2: Telegram WebApp openLink (para abrir en navegador externo)
+            // Estrategia 2: Telegram openLink con blob URL
             try {
                 const url = URL.createObjectURL(blob);
                 if (tg && tg.openLink) {
-                    tg.openLink(url);
-                    console.log('✅ Descarga iniciada via tg.openLink:', nombreArchivo);
+                    tg.openLink(url, { try_instant_view: false });
+                    console.log('✅ Descarga via tg.openLink blob:', nombreArchivo);
                     return;
                 }
             } catch (e) {
-                console.warn('❌ Estrategia 2 falló:', e);
+                console.warn('❌ Estrategia tg.openLink fallo:', e);
             }
 
             // Estrategia 3: Convertir a base64 y usar data URI
@@ -1208,27 +1024,26 @@
                     }, 100);
                 };
                 reader.readAsDataURL(blob);
-                console.log('✅ Descarga iniciada via data URL:', nombreArchivo);
+                console.log('✅ Descarga via data URL:', nombreArchivo);
                 return;
             } catch (e) {
-                console.warn('❌ Estrategia 3 falló:', e);
+                console.warn('❌ Estrategia data URL fallo:', e);
             }
 
-            // Fallback: mostrar error
-            tg.showAlert('No se pudo descargar el archivo. Probá desde un navegador externo.');
+            tg.showAlert('No se pudo descargar el archivo. Proba desde un navegador externo.');
         }
 
-        // ==================== 📝 CARGAR JUSTIFICACION EXISTENTE ====================
+        // ==================== 📝 JUSTIFICACIONES ====================
 
         async function cargarJustificacionExistente(alumnoId) {
             try {
                 const params = new URLSearchParams();
                 params.append('alumno_id', alumnoId);
                 params.append('fecha', fechaSel);
-                
+
                 const r = await fetch(`${API}/asistencia/justificacion?${params}`);
                 const data = await r.json();
-                
+
                 if (data && data.length > 0) {
                     return data[0];
                 }
@@ -1239,8 +1054,6 @@
             }
         }
 
-        // ==================== 📝 ABRIR JUSTIFICACION ====================
-
         async function abrirJustificacion(alumnoId) {
             const alumno = alumnos.find(a => a.id === alumnoId);
             if (!alumno) {
@@ -1249,13 +1062,13 @@
             }
 
             alumnoJustificacionId = alumnoId;
-            
+
             const existente = await cargarJustificacionExistente(alumnoId);
             justificacionExistente = existente;
-            
+
             document.getElementById('justificacion-alumno').textContent = 
                 alumno.nombre + ' ' + (alumno.apellido_paterno || '');
-            
+
             const notaInput = document.getElementById('justificacion-nota');
             const previewDiv = document.getElementById('justificacion-preview');
             const archivoInput = document.getElementById('justificacion-archivo');
@@ -1263,30 +1076,29 @@
             const btnAdjuntar = document.getElementById('btn-adjuntar-foto');
             const btnGuardar = document.getElementById('btn-guardar-justificacion');
             const titulo = document.getElementById('modal-justificacion-titulo');
-            
+
             notaInput.value = '';
             previewDiv.innerHTML = '';
             archivoInput.value = '';
             infoDiv.style.display = 'none';
             infoDiv.innerHTML = '';
-            
+
             if (existente) {
-                // MODO VER JUSTIFICACION EXISTENTE
-                titulo.textContent = '👁️ Ver Justificación';
-                
+                titulo.textContent = '👁️ Ver Justificacion';
+
                 notaInput.value = existente.nota || '';
                 notaInput.readOnly = true;
                 notaInput.style.background = '#f5f5f5';
-                
+
                 infoDiv.style.display = 'block';
                 infoDiv.innerHTML = `
                     <strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<br>
                     <strong>👤 Por:</strong> Usuario #${existente.user_id || 'desconocido'}
                 `;
-                
+
                 if (existente.archivo_url) {
                     const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${existente.archivo_url}`;
-                    
+
                     previewDiv.innerHTML = `
                         <div style="margin: 10px 0;">
                             <img src="${imageUrl}" 
@@ -1295,33 +1107,32 @@
                                  alt="Justificacion"
                                  style="cursor: pointer;">
                             <p style="font-size: 0.75rem; color: #888; margin-top: 6px; text-align: center;">
-                                👆 Tocá la imagen para ver en tamaño completo
+                                👆 Toca la imagen para ver en tamano completo
                             </p>
                         </div>
                     `;
                 } else {
                     previewDiv.innerHTML = '<p style="color: #888; font-size: 0.85rem; text-align: center; padding: 10px;">📝 Solo nota de texto, sin imagen adjunta</p>';
                 }
-                
+
                 btnAdjuntar.style.display = 'none';
-                
+
                 btnGuardar.textContent = '✅ Cerrar';
                 btnGuardar.onclick = function() { cerrarModal('modal-justificacion'); };
-                
+
             } else {
-                // MODO CREAR NUEVA JUSTIFICACION
-                titulo.textContent = '📝 Nueva Justificación';
-                
+                titulo.textContent = '📝 Nueva Justificacion';
+
                 notaInput.readOnly = false;
                 notaInput.style.background = 'white';
-                notaInput.placeholder = 'Motivo de la justificación...';
-                
+                notaInput.placeholder = 'Motivo de la justificacion...';
+
                 btnAdjuntar.style.display = 'inline-block';
-                
-                btnGuardar.textContent = 'Guardar Justificación';
+
+                btnGuardar.textContent = 'Guardar Justificacion';
                 btnGuardar.onclick = guardarJustificacion;
             }
-            
+
             document.getElementById('modal-justificacion').classList.add('show');
         }
 
@@ -1341,7 +1152,7 @@
             const archivoInput = document.getElementById('justificacion-archivo');
 
             if (!nota && !archivoInput.files.length) {
-                tg.showAlert('Agregá una nota o adjuntá una foto');
+                tg.showAlert('Agrega una nota o adjunta una foto');
                 return;
             }
 
@@ -1371,7 +1182,7 @@
                 console.log('DEBUG - Respuesta:', d);
 
                 if (d.success) {
-                    tg.showAlert('✅ Justificación guardada');
+                    tg.showAlert('✅ Justificacion guardada');
                     cerrarModal('modal-justificacion');
                 } else {
                     tg.showAlert('❌ Error: ' + (d.message || 'Error desconocido'));
