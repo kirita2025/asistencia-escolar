@@ -105,6 +105,7 @@
         .justificacion-info { font-size: 0.8rem; color: #666; margin: 8px 0; padding: 8px; background: #f9f9f9; border-radius: 6px; }
     </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <div class="app">
@@ -1042,9 +1043,16 @@
                 params.append('fecha', fechaSel);
 
                 const r = await fetch(`${API}/asistencia/justificacion?${params}`);
-                const data = await r.json();
 
-                if (data && data.length > 0) {
+                if (!r.ok) {
+                    console.error('Error HTTP cargando justificacion:', r.status);
+                    return null;
+                }
+
+                const data = await r.json();
+                console.log('DEBUG - Justificacion cargada:', data);
+
+                if (Array.isArray(data) && data.length > 0) {
                     return data[0];
                 }
                 return null;
@@ -1172,24 +1180,41 @@
                 formData.append('archivo', archivoInput.files[0], archivoInput.files[0].name);
             }
 
+            const btnGuardar = document.getElementById('btn-guardar-justificacion');
+            const textoOriginal = btnGuardar.textContent;
+            btnGuardar.textContent = '⏳ Guardando...';
+            btnGuardar.disabled = true;
+
             try {
                 const r = await fetch(`${API}/asistencia/justificacion`, {
                     method: 'POST',
                     body: formData
                 });
 
-                const d = await r.json();
+                let d;
+                const contentType = r.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    d = await r.json();
+                } else {
+                    const text = await r.text();
+                    console.error('Respuesta no JSON:', text);
+                    throw new Error('El servidor respondio con error ' + r.status + ': ' + text.substring(0, 200));
+                }
+
                 console.log('DEBUG - Respuesta:', d);
 
-                if (d.success) {
+                if (r.ok && d.success) {
                     tg.showAlert('✅ Justificacion guardada');
                     cerrarModal('modal-justificacion');
                 } else {
-                    tg.showAlert('❌ Error: ' + (d.message || 'Error desconocido'));
+                    tg.showAlert('❌ Error del servidor: ' + (d.detail || d.message || JSON.stringify(d)));
                 }
             } catch (e) {
                 console.error('DEBUG - Error:', e);
                 tg.showAlert('Error guardando: ' + e.message);
+            } finally {
+                btnGuardar.textContent = textoOriginal;
+                btnGuardar.disabled = false;
             }
         }
 
