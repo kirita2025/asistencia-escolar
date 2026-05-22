@@ -47,7 +47,6 @@ class GuardarAsistenciaRequest(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: verificar buckets
     try:
         buckets = supabase.storage.list_buckets()
         bucket_names = [b["name"] for b in buckets]
@@ -64,19 +63,16 @@ async def lifespan(app: FastAPI):
         print(f"Warning verificando buckets: {e}")
 
     yield
-
-    # Shutdown
     print("Backend cerrado")
 
 
 app = FastAPI(
     title="Asistencia Escolar API",
     description="Backend para Control de Asistencia - Telegram Mini App",
-    version="2.0.0",
+    version="2.0.1",
     lifespan=lifespan
 )
 
-# CORS para Vercel
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -89,14 +85,10 @@ app.add_middleware(
 # ============ HELPERS ============
 
 def verify_telegram_init_data(init_data: str) -> dict:
-    """
-    Verifica la firma de initData de Telegram WebApp.
-    """
     if not BOT_TOKEN:
         return {"id": 0, "first_name": "Dev Mode", "username": "dev"}
 
     try:
-        # Parsear init_data
         data = {}
         for pair in init_data.split("&"):
             if "=" in pair:
@@ -104,18 +96,14 @@ def verify_telegram_init_data(init_data: str) -> dict:
                 data[k] = v
 
         hash_received = data.pop("hash", "")
-
-        # Crear data_check_string
         data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
 
-        # Crear secret_key
         secret_key = hmac.new(
             key=b"WebAppData",
             msg=BOT_TOKEN.encode(),
             digestmod=hashlib.sha256
         ).digest()
 
-        # Verificar hash
         hash_calculated = hmac.new(
             key=secret_key,
             msg=data_check_string.encode(),
@@ -125,7 +113,6 @@ def verify_telegram_init_data(init_data: str) -> dict:
         if hash_calculated != hash_received:
             raise ValueError("Hash invalido")
 
-        # Parsear user
         user_data = json.loads(data.get("user", "{}"))
         return user_data
 
@@ -138,7 +125,7 @@ def verify_telegram_init_data(init_data: str) -> dict:
 @app.get("/api")
 @app.get("/api/")
 async def root():
-    return {"status": "ok", "modo": "online", "version": "2.0.0"}
+    return {"status": "ok", "modo": "online", "version": "2.0.1"}
 
 
 @app.post("/api/auth")
@@ -207,7 +194,6 @@ async def registrar_asistencia(request: GuardarAsistenciaRequest):
                 "created_at": datetime.utcnow().isoformat()
             })
 
-        # Upsert: si ya existe alumno_id + fecha, actualizar
         result = supabase.table("asistencia").upsert(
             registros,
             on_conflict="alumno_id,fecha"
@@ -227,22 +213,18 @@ async def registrar_asistencia(request: GuardarAsistenciaRequest):
 @app.get("/api/asistencia/reporte")
 async def get_reporte(desde: str, hasta: str, grado: Optional[str] = None, seccion: Optional[str] = None):
     try:
-        # Obtener asistencia del periodo
         query = supabase.table("asistencia").select("*").gte("fecha", desde).lte("fecha", hasta)
         result = query.execute()
         asistencias = result.data or []
 
-        # Obtener todos los alumnos para el join
         alumnos_result = supabase.table("alumnos").select("*").execute()
         alumnos = {a["id"]: a for a in (alumnos_result.data or [])}
 
-        # Filtrar por grado/seccion si aplica
         if grado:
             asistencias = [a for a in asistencias if alumnos.get(a.get("alumno_id"), {}).get("grado") == grado]
         if seccion:
             asistencias = [a for a in asistencias if alumnos.get(a.get("alumno_id"), {}).get("seccion") == seccion]
 
-        # Agrupar por alumno
         reporte = {}
         for a in asistencias:
             alumno_id = a.get("alumno_id")
@@ -290,8 +272,7 @@ async def get_justificaciones(alumno_id: Optional[int] = None, fecha: Optional[s
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# FIX CRITICO: Cambiar File(None) a None para que funcione cuando no se envia archivo
-# Tambien se cambia el orden: archivo va PRIMERO (requerido por FastAPI cuando mezcla Form y File)
+# FIX CRITICO: UploadFile opcional SIN File() para evitar 422 cuando no hay archivo
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
     alumno_id: int = Form(...),
@@ -302,7 +283,6 @@ async def guardar_justificacion(
     try:
         archivo_url = None
 
-        # Subir archivo si existe
         if archivo and archivo.filename:
             ext = os.path.splitext(archivo.filename)[1] or ""
             safe_name = f"{uuid.uuid4().hex}{ext}"
@@ -318,7 +298,6 @@ async def guardar_justificacion(
 
             archivo_url = path
 
-        # Guardar en DB
         data = {
             "alumno_id": alumno_id,
             "fecha": fecha,
@@ -335,33 +314,23 @@ async def guardar_justificacion(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ============ NUEVO ENDPOINT: UPLOAD TEMP ============
-
 @app.post("/api/upload-temp")
 async def upload_temp(archivo: UploadFile = File(...)):
-    """
-    Sube un archivo temporalmente a Supabase Storage y devuelve URL publica.
-    Ideal para descargas en Telegram WebView donde los blobs no funcionan.
-    """
     try:
-        # Validar tamaño (max 10MB)
         content = await archivo.read()
         if len(content) > 10 * 1024 * 1024:
             raise HTTPException(status_code=413, detail="Archivo muy grande (max 10MB)")
 
-        # Generar nombre unico
         ext = os.path.splitext(archivo.filename)[1] or ""
         safe_name = f"{uuid.uuid4().hex}{ext}"
         path = f"reports/{datetime.utcnow().strftime('%Y/%m/%d')}/{safe_name}"
 
-        # Subir a Supabase Storage
         supabase.storage.from_(BUCKET_TEMP).upload(
             path=path,
             file=content,
             file_options={"content-type": archivo.content_type or "application/octet-stream"}
         )
 
-        # Obtener URL publica
         public_url = supabase.storage.from_(BUCKET_TEMP).get_public_url(path)
 
         return {
@@ -376,8 +345,6 @@ async def upload_temp(archivo: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error subiendo archivo: {str(e)}")
 
-
-# ============ HEALTH CHECK PARA RENDER ============
 
 @app.get("/")
 @app.get("/health")
