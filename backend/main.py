@@ -290,12 +290,14 @@ async def get_justificaciones(alumno_id: Optional[int] = None, fecha: Optional[s
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# FIX CRITICO: Cambiar File(None) a None para que funcione cuando no se envia archivo
+# Tambien se cambia el orden: archivo va PRIMERO (requerido por FastAPI cuando mezcla Form y File)
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
     alumno_id: int = Form(...),
     fecha: str = Form(...),
     nota: str = Form(default=""),
-    archivo: Optional[UploadFile] = File(None)
+    archivo: Optional[UploadFile] = None
 ):
     try:
         archivo_url = None
