@@ -1,17 +1,82 @@
-import os, hashlib, hmac, urllib.parse, json, logging
-from fastapi import FastAPI, Request, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from supabase import create_client
+import os
+import uuid
+import hmac
+import hashlib
+import json
 from datetime import datetime, timedelta
+from typing import Optional, List
+from contextlib import asynccontextmanager
 
-# Configuracion inicial
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request, Form
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from supabase import create_client, Client
 
-app = FastAPI(title="Asistencia Escolar API")
 
-# CORS
+# ============ CONFIGURACION ============
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://jqxiqvbkyyxlzisfdrcr.supabase.co")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+BUCKET_TEMP = "temp-downloads"
+BUCKET_JUSTIFICACIONES = "justificaciones"
+
+
+# ============ MODELOS ============
+
+class AuthRequest(BaseModel):
+    initData: str
+
+class RegistroAsistencia(BaseModel):
+    alumno_id: int
+    fecha: str
+    estado: str
+    hora: str
+    user_id: int
+
+class GuardarAsistenciaRequest(BaseModel):
+    registros: List[RegistroAsistencia]
+    user_id: int
+
+
+# ============ LIFESPAN ============
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: verificar buckets
+    try:
+        buckets = supabase.storage.list_buckets()
+        bucket_names = [b["name"] for b in buckets]
+
+        if BUCKET_TEMP not in bucket_names:
+            supabase.storage.create_bucket(BUCKET_TEMP, options={"public": True})
+            print(f"Bucket '{BUCKET_TEMP}' creado")
+
+        if BUCKET_JUSTIFICACIONES not in bucket_names:
+            supabase.storage.create_bucket(BUCKET_JUSTIFICACIONES, options={"public": True})
+            print(f"Bucket '{BUCKET_JUSTIFICACIONES}' creado")
+
+    except Exception as e:
+        print(f"Warning verificando buckets: {e}")
+
+    yield
+
+    # Shutdown
+    print("Backend cerrado")
+
+
+app = FastAPI(
+    title="Asistencia Escolar API",
+    description="Backend para Control de Asistencia - Telegram Mini App",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+# CORS para Vercel
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,321 +85,305 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Conexion a Supabase
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-# Inicializar Supabase solo si hay credenciales
-supabase = None
-if SUPABASE_URL and SUPABASE_KEY:
-    try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        logger.info("Supabase conectado")
-    except Exception as e:
-        logger.error(f"Error conectando Supabase: {e}")
-else:
-    logger.warning("SUPABASE_URL o SUPABASE_KEY no configurados")
+# ============ HELPERS ============
 
-# Validacion de Telegram
-def validar_telegram(init_data: str):
+def verify_telegram_init_data(init_data: str) -> dict:
+    """
+    Verifica la firma de initData de Telegram WebApp.
+    """
     if not BOT_TOKEN:
-        logger.warning("BOT_TOKEN no configurado. Auth en modo desarrollo.")
-        parsed = urllib.parse.parse_qs(init_data)
-        user_str = parsed.get("user", [None])[0]
-        if user_str:
-            return {"valid": True, "user": json.loads(user_str)}
-        return {"valid": False, "error": "No user data"}
+        return {"id": 0, "first_name": "Dev Mode", "username": "dev"}
 
     try:
-        parsed = urllib.parse.parse_qs(init_data)
-        received_hash = parsed.get("hash", [None])[0]
-        if not received_hash:
-            return {"valid": False, "error": "No hash"}
+        # Parsear init_data
+        data = {}
+        for pair in init_data.split("&"):
+            if "=" in pair:
+                k, v = pair.split("=", 1)
+                data[k] = v
 
-        data_to_check = {k: v[0] for k, v in parsed.items() if k != "hash"}
-        data_check_string = "\n".join([f"{k}={v}" for k, v in sorted(data_to_check.items())])
+        hash_received = data.pop("hash", "")
 
-        secret_key = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
-        calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        # Crear data_check_string
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data.items()))
 
-        if calculated_hash != received_hash:
-            return {"valid": False, "error": "Hash invalido"}
+        # Crear secret_key
+        secret_key = hmac.new(
+            key=b"WebAppData",
+            msg=BOT_TOKEN.encode(),
+            digestmod=hashlib.sha256
+        ).digest()
 
-        return {"valid": True, "user": json.loads(data_check_string.get("user", "{}"))}
+        # Verificar hash
+        hash_calculated = hmac.new(
+            key=secret_key,
+            msg=data_check_string.encode(),
+            digestmod=hashlib.sha256
+        ).hexdigest()
+
+        if hash_calculated != hash_received:
+            raise ValueError("Hash invalido")
+
+        # Parsear user
+        user_data = json.loads(data.get("user", "{}"))
+        return user_data
+
     except Exception as e:
-        logger.error(f"Error validando Telegram: {e}")
-        return {"valid": False, "error": str(e)}
+        raise HTTPException(status_code=401, detail=f"Auth invalida: {str(e)}")
 
-# ============================================================
-# ENDPOINTS RAIZ - MUY IMPORTANTE PARA RENDER
-# ============================================================
 
-@app.get("/", response_class=JSONResponse)
-async def root():
-    """Endpoint raiz para health check de Render"""
-    return {
-        "status": "ok",
-        "service": "Asistencia Escolar API",
-        "modo": "online",
-        "timestamp": datetime.now().isoformat()
-    }
+# ============ ENDPOINTS ============
 
-@app.head("/")
-async def root_head():
-    """HEAD request para health check de Render"""
-    return JSONResponse(content={"status": "ok"})
-
+@app.get("/api")
 @app.get("/api/")
-async def health():
-    return {"modo": "online", "status": "ok"}
+async def root():
+    return {"status": "ok", "modo": "online", "version": "2.0.0"}
+
 
 @app.post("/api/auth")
-async def auth(request: Request):
+async def auth(request: AuthRequest):
     try:
-        body = await request.json()
-        init_data = body.get("initData", "")
-        if not init_data:
-            return {"success": False, "message": "Falta initData"}
-
-        result = validar_telegram(init_data)
-        if result["valid"]:
-            logger.info(f"Maestro autenticado: {result['user'].get('first_name')}")
-            return {"success": True, "user": result["user"]}
-        else:
-            return {"success": False, "message": result.get("error", "Auth fallida")}
+        user = verify_telegram_init_data(request.initData)
+        return {
+            "success": True,
+            "user": {
+                "id": user.get("id", 0),
+                "first_name": user.get("first_name", "Usuario"),
+                "username": user.get("username", "")
+            }
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         return {"success": False, "message": str(e)}
 
-@app.get("/api/alumnos")
-async def get_alumnos(grado: str = None, seccion: str = None):
-    try:
-        if not supabase:
-            return []
 
+@app.get("/api/alumnos")
+async def get_alumnos(grado: Optional[str] = None, seccion: Optional[str] = None):
+    try:
         query = supabase.table("alumnos").select("*")
+
         if grado:
             query = query.eq("grado", grado)
         if seccion:
             query = query.eq("seccion", seccion)
 
-        response = query.order("apellido_paterno").execute()
-        return response.data
+        result = query.execute()
+        return result.data or []
+
     except Exception as e:
-        logger.error(f"Error alumnos: {e}")
-        return []
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/asistencia/hoy")
-async def get_asistencia(fecha: str = None, grado: str = None, seccion: str = None):
+async def get_asistencia_hoy(fecha: str, grado: Optional[str] = None, seccion: Optional[str] = None):
     try:
-        if not supabase:
-            return {"asistencia": []}
+        query = supabase.table("asistencia").select("*").eq("fecha", fecha)
 
-        query = supabase.table("asistencia").select("*")
-        if fecha:
-            query = query.eq("fecha", fecha)
+        if grado:
+            query = query.eq("grado", grado)
+        if seccion:
+            query = query.eq("seccion", seccion)
 
-        response = query.execute()
-        data = response.data
+        result = query.execute()
+        return {"asistencia": result.data or []}
 
-        if grado or seccion:
-            alumnos_q = supabase.table("alumnos").select("id")
-            if grado: alumnos_q = alumnos_q.eq("grado", grado)
-            if seccion: alumnos_q = alumnos_q.eq("seccion", seccion)
-
-            ids_validos = [a["id"] for a in alumnos_q.execute().data]
-            data = [r for r in data if r["alumno_id"] in ids_validos]
-
-        return {"asistencia": data}
     except Exception as e:
-        logger.error(f"Error asistencia: {e}")
-        return {"asistencia": []}
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/asistencia/registrar")
-async def registrar_asistencia(request: Request):
+async def registrar_asistencia(request: GuardarAsistenciaRequest):
     try:
-        if not supabase:
-            return {"success": False, "message": "Supabase no configurado"}
+        registros = []
+        for r in request.registros:
+            registros.append({
+                "alumno_id": r.alumno_id,
+                "fecha": r.fecha,
+                "estado": r.estado,
+                "hora": r.hora,
+                "user_id": r.user_id,
+                "created_at": datetime.utcnow().isoformat()
+            })
 
-        body = await request.json()
-        registros = body.get("registros", [])
-        user_id = body.get("user_id", 0)
+        # Upsert: si ya existe alumno_id + fecha, actualizar
+        result = supabase.table("asistencia").upsert(
+            registros,
+            on_conflict="alumno_id,fecha"
+        ).execute()
 
-        if not registros:
-            return {"success": False, "message": "No hay registros para guardar"}
-
-        supabase.table("asistencia").insert(registros).execute()
-
-        logger.info(f"{len(registros)} registros guardados por user_id: {user_id}")
         return {
-            "success": True, 
-            "registros": len(registros), 
-            "modo": "online", 
-            "mensaje": "Asistencia guardada correctamente"
+            "success": True,
+            "modo": "online",
+            "registros": len(registros),
+            "mensaje": f"Guardados {len(registros)} registros"
         }
-    except Exception as e:
-        logger.error(f"Error DB: {e}")
-        return {"success": False, "message": str(e)}
 
-# Reporte semanal/mensual
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/asistencia/reporte")
-async def get_reporte(desde: str = None, hasta: str = None, grado: str = None, seccion: str = None):
+async def get_reporte(desde: str, hasta: str, grado: Optional[str] = None, seccion: Optional[str] = None):
     try:
-        if not supabase:
-            return []
+        # Obtener asistencia del periodo
+        query = supabase.table("asistencia").select("*").gte("fecha", desde).lte("fecha", hasta)
+        result = query.execute()
+        asistencias = result.data or []
 
-        if not desde or not hasta:
-            return []
+        # Obtener todos los alumnos para el join
+        alumnos_result = supabase.table("alumnos").select("*").execute()
+        alumnos = {a["id"]: a for a in (alumnos_result.data or [])}
 
-        alumnos_q = supabase.table("alumnos").select("id, nombre, apellido_paterno, apellido_materno, matricula, grado, seccion")
+        # Filtrar por grado/seccion si aplica
         if grado:
-            alumnos_q = alumnos_q.eq("grado", grado)
+            asistencias = [a for a in asistencias if alumnos.get(a.get("alumno_id"), {}).get("grado") == grado]
         if seccion:
-            alumnos_q = alumnos_q.eq("seccion", seccion)
+            asistencias = [a for a in asistencias if alumnos.get(a.get("alumno_id"), {}).get("seccion") == seccion]
 
-        alumnos_data = alumnos_q.execute().data
-
-        asistencia_q = supabase.table("asistencia").select("alumno_id, estado, fecha").gte("fecha", desde).lte("fecha", hasta)
-
-        if grado or seccion:
-            ids_alumnos = [a["id"] for a in alumnos_data]
-            asistencia_q = asistencia_q.in_("alumno_id", ids_alumnos)
-
-        asistencia_data = asistencia_q.execute().data
-
+        # Agrupar por alumno
         reporte = {}
-        for a in alumnos_data:
-            reporte[a["id"]] = {
-                "id": a["id"],
-                "nombre": f"{a['nombre']} {a.get('apellido_paterno', '')} {a.get('apellido_materno', '')}".strip(),
-                "matricula": a["matricula"],
-                "grado": a["grado"],
-                "seccion": a["seccion"],
-                "P": 0, "A": 0, "T": 0, "J": 0, "E": 0,
-                "dias": 0
-            }
+        for a in asistencias:
+            alumno_id = a.get("alumno_id")
+            if alumno_id not in reporte:
+                alumno = alumnos.get(alumno_id, {})
+                reporte[alumno_id] = {
+                    "id": alumno_id,
+                    "nombre": f"{alumno.get('nombre', '')} {alumno.get('apellido_paterno', '')} {alumno.get('apellido_materno', '')}".strip(),
+                    "matricula": alumno.get("matricula", ""),
+                    "grado": alumno.get("grado", ""),
+                    "seccion": alumno.get("seccion", ""),
+                    "P": 0, "A": 0, "T": 0, "J": 0, "E": 0,
+                    "dias": 0
+                }
 
-        for reg in asistencia_data:
-            alumno_id = reg["alumno_id"]
-            if alumno_id in reporte:
-                estado = reg["estado"]
-                if estado in reporte[alumno_id]:
-                    reporte[alumno_id][estado] += 1
-                reporte[alumno_id]["dias"] += 1
+            estado = a.get("estado", "")
+            if estado in reporte[alumno_id]:
+                reporte[alumno_id][estado] += 1
+            reporte[alumno_id]["dias"] += 1
 
         return list(reporte.values())
 
     except Exception as e:
-        logger.error(f"Error reporte: {e}")
-        return []
+        raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================
-# JUSTIFICACION - VERSION CORREGIDA
-# ============================================================
-
-@app.post("/api/asistencia/justificacion")
-async def guardar_justificacion(
-    alumno_id: str = Form(...),           # ← str (UUID), no int
-    fecha: str = Form(...),
-    nota: str = Form(default=""),
-    archivo: UploadFile = File(None),
-    user_id: str = Form(default="0")      # ← str tambien (o int si user_id es numero)
-):
-    try:
-        if not supabase:
-            return {"success": False, "message": "Supabase no configurado"}
-
-        if not alumno_id or len(alumno_id) < 5:  # UUID tiene 36 chars
-            return {"success": False, "message": "alumno_id invalido"}
-
-        if not fecha or len(fecha) != 10:
-            return {"success": False, "message": "fecha invalida (formato YYYY-MM-DD)"}
-
-        logger.info(f"Justificacion recibida: alumno_id={alumno_id}, fecha={fecha}, nota={nota}, archivo={archivo.filename if archivo else 'ninguno'}")
-
-        justificacion_data = {
-            "alumno_id": alumno_id,
-            "fecha": fecha,
-            "nota": nota or "",
-            "user_id": user_id,
-            "created_at": datetime.now().isoformat()
-        }
-
-        if archivo and archivo.filename:
-            try:
-                file_content = await archivo.read()
-                file_ext = os.path.splitext(archivo.filename)[1]
-                file_name = f"justificaciones/{alumno_id}_{fecha}_{int(datetime.now().timestamp())}{file_ext}"
-
-                supabase.storage.from_("justificaciones").upload(
-                    file_name,
-                    file_content,
-                    {"content-type": archivo.content_type or "image/jpeg"}
-                )
-                justificacion_data["archivo_url"] = file_name
-                logger.info(f"Archivo subido: {file_name}")
-
-            except Exception as e:
-                logger.error(f"Error subiendo archivo: {e}")
-
-        supabase.table("justificaciones").insert(justificacion_data).execute()
-
-        return {
-            "success": True,
-            "message": "Justificacion guardada correctamente",
-            "data": {
-                "alumno_id": alumno_id,
-                "fecha": fecha,
-                "tiene_archivo": "archivo_url" in justificacion_data
-            }
-        }
-
-    except Exception as e:
-        logger.error(f"Error justificacion: {e}")
-        return {"success": False, "message": f"Error del servidor: {str(e)}"}
 
 @app.get("/api/asistencia/justificacion")
-async def get_justificacion(alumno_id: str = None, fecha: str = None):
+async def get_justificaciones(alumno_id: Optional[int] = None, fecha: Optional[str] = None, desde: Optional[str] = None, hasta: Optional[str] = None):
     try:
-        if not supabase:
-            return []
-
         query = supabase.table("justificaciones").select("*")
+
         if alumno_id:
             query = query.eq("alumno_id", alumno_id)
         if fecha:
             query = query.eq("fecha", fecha)
+        if desde:
+            query = query.gte("fecha", desde)
+        if hasta:
+            query = query.lte("fecha", hasta)
 
-        response = query.execute()
-        return response.data
+        result = query.execute()
+        return result.data or []
+
     except Exception as e:
-        logger.error(f"Error get justificacion: {e}")
-        return []
+        raise HTTPException(status_code=500, detail=str(e))
 
-# QR / Matricula
 
-@app.get("/api/alumnos/matricula/{matricula}")
-async def get_alumno_by_matricula(matricula: str):
+@app.post("/api/asistencia/justificacion")
+async def guardar_justificacion(
+    alumno_id: int = Form(...),
+    fecha: str = Form(...),
+    nota: str = Form(default=""),
+    archivo: Optional[UploadFile] = File(None)
+):
     try:
-        if not supabase:
-            return {"success": False, "message": "Supabase no configurado"}
+        archivo_url = None
 
-        response = supabase.table("alumnos").select("*").eq("matricula", matricula).single().execute()
+        # Subir archivo si existe
+        if archivo and archivo.filename:
+            ext = os.path.splitext(archivo.filename)[1] or ""
+            safe_name = f"{uuid.uuid4().hex}{ext}"
+            path = f"{alumno_id}/{safe_name}"
 
-        if response.data:
-            return {"success": True, "alumno": response.data}
-        return {"success": False, "message": "Alumno no encontrado"}
+            content = await archivo.read()
+
+            supabase.storage.from_(BUCKET_JUSTIFICACIONES).upload(
+                path=path,
+                file=content,
+                file_options={"content-type": archivo.content_type or "image/jpeg"}
+            )
+
+            archivo_url = path
+
+        # Guardar en DB
+        data = {
+            "alumno_id": alumno_id,
+            "fecha": fecha,
+            "nota": nota,
+            "archivo_url": archivo_url,
+            "created_at": datetime.utcnow().isoformat()
+        }
+
+        result = supabase.table("justificaciones").insert(data).execute()
+
+        return {"success": True, "data": result.data}
+
     except Exception as e:
-        logger.error(f"Error buscar matricula: {e}")
-        return {"success": False, "message": str(e)}
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/debug")
-async def debug():
-    return {
-        "supabase_url": bool(SUPABASE_URL),
-        "supabase_key": bool(SUPABASE_KEY),
-        "bot_token": bool(BOT_TOKEN),
-        "supabase_connected": supabase is not None,
-        "tables": ["alumnos", "asistencia", "justificaciones"]
-    }
+
+# ============ NUEVO ENDPOINT: UPLOAD TEMP ============
+
+@app.post("/api/upload-temp")
+async def upload_temp(archivo: UploadFile = File(...)):
+    """
+    Sube un archivo temporalmente a Supabase Storage y devuelve URL publica.
+    Ideal para descargas en Telegram WebView donde los blobs no funcionan.
+    """
+    try:
+        # Validar tamaño (max 10MB)
+        content = await archivo.read()
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="Archivo muy grande (max 10MB)")
+
+        # Generar nombre unico
+        ext = os.path.splitext(archivo.filename)[1] or ""
+        safe_name = f"{uuid.uuid4().hex}{ext}"
+        path = f"reports/{datetime.utcnow().strftime('%Y/%m/%d')}/{safe_name}"
+
+        # Subir a Supabase Storage
+        supabase.storage.from_(BUCKET_TEMP).upload(
+            path=path,
+            file=content,
+            file_options={"content-type": archivo.content_type or "application/octet-stream"}
+        )
+
+        # Obtener URL publica
+        public_url = supabase.storage.from_(BUCKET_TEMP).get_public_url(path)
+
+        return {
+            "success": True,
+            "url": public_url,
+            "filename": archivo.filename,
+            "expires_in": "24h"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error subiendo archivo: {str(e)}")
+
+
+# ============ HEALTH CHECK PARA RENDER ============
+
+@app.get("/")
+@app.get("/health")
+async def health():
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
