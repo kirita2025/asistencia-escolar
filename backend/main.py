@@ -283,7 +283,7 @@ async def get_justificaciones(alumno_id: Optional[str] = None, fecha: Optional[s
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# FIX: alumno_id como str + archivo sin File()
+# FIX:  alumno_id como str + archivo  sin File()
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
     alumno_id: str = Form(...),
