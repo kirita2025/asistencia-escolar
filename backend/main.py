@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Asistencia Escolar API",
     description="Backend para Control de Asistencia - Telegram Mini App",
-    version="2.0.2",
+    version="2.0.3",
     lifespan=lifespan
 )
 
@@ -125,7 +125,7 @@ def verify_telegram_init_data(init_data: str) -> dict:
 @app.get("/api")
 @app.get("/api/")
 async def root():
-    return {"status": "ok", "modo": "online", "version": "2.0.2"}
+    return {"status": "ok", "modo": "online", "version": "2.0.3"}
 
 
 @app.post("/api/auth")
@@ -163,18 +163,28 @@ async def get_alumnos(grado: Optional[str] = None, seccion: Optional[str] = None
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# FIX: La tabla asistencia NO tiene columnas grado/seccion.
+# Se carga TODA la asistencia del dia y el frontend filtra.
 @app.get("/api/asistencia/hoy")
 async def get_asistencia_hoy(fecha: str, grado: Optional[str] = None, seccion: Optional[str] = None):
     try:
-        query = supabase.table("asistencia").select("*").eq("fecha", fecha)
+        # Cargar TODA la asistencia del dia (sin filtrar por grado/seccion aqui)
+        result = supabase.table("asistencia").select("*").eq("fecha", fecha).execute()
+        asistencias = result.data or []
 
-        if grado:
-            query = query.eq("grado", grado)
-        if seccion:
-            query = query.eq("seccion", seccion)
+        # Si piden grado/seccion, obtener IDs de alumnos de ese filtro
+        # y devolver solo asistencia de esos alumnos
+        if grado or seccion:
+            aq = supabase.table("alumnos").select("id")
+            if grado:
+                aq = aq.eq("grado", grado)
+            if seccion:
+                aq = aq.eq("seccion", seccion)
+            alumnos_filtrados = aq.execute().data or []
+            ids_validos = {str(a["id"]) for a in alumnos_filtrados}
+            asistencias = [a for a in asistencias if str(a.get("alumno_id")) in ids_validos]
 
-        result = query.execute()
-        return {"asistencia": result.data or []}
+        return {"asistencia": asistencias}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -251,7 +261,7 @@ async def get_reporte(desde: str, hasta: str, grado: Optional[str] = None, secci
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# FIX: alumno_id como str (UUID) en vez de int
+# FIX: alumno_id como str (UUID)
 @app.get("/api/asistencia/justificacion")
 async def get_justificaciones(alumno_id: Optional[str] = None, fecha: Optional[str] = None, desde: Optional[str] = None, hasta: Optional[str] = None):
     try:
@@ -273,9 +283,7 @@ async def get_justificaciones(alumno_id: Optional[str] = None, fecha: Optional[s
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# FIX CRITICO:
-# 1. alumno_id como str (UUID) en vez de int
-# 2. archivo: Optional[UploadFile] = None (SIN File()) para evitar 422 sin archivo
+# FIX: alumno_id como str + archivo sin File()
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
     alumno_id: str = Form(...),
