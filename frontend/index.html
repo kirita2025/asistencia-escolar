@@ -346,6 +346,7 @@
         let alumnoJustificacionId = null;
         let reporteData = [];
         let justificacionExistente = null;
+        let justificacionesDelDia = {};
 
         const estados = {
             P: { icon: '✅', label: 'Presente', cls: 'sel-p' },
@@ -515,14 +516,25 @@
                 if (g) params.append('grado', g);
                 if (s) params.append('seccion', s);
                 const al = await (await fetch(`${API}/alumnos?${params}`)).json();
+
+                // Cargar asistencia del día (el backend filtra por alumno_id si hay grado/seccion)
                 const ap = new URLSearchParams();
                 ap.append('fecha', fechaSel);
                 if (g) ap.append('grado', g);
                 if (s) ap.append('seccion', s);
                 const asis = await (await fetch(`${API}/asistencia/hoy?${ap}`)).json();
                 const asisMap = {};
-                (asis.asistencia || []).forEach(a => { asisMap[a.alumno_id || a.id] = a.estado; });
-                alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
+                (asis.asistencia || []).forEach(a => { asisMap[String(a.alumno_id)] = a.estado; });
+
+                // Cargar justificaciones del día de una sola vez
+                const jp = new URLSearchParams();
+                jp.append('fecha', fechaSel);
+                const justs = await (await fetch(`${API}/asistencia/justificacion?${jp}`)).json();
+                justificacionesDelDia = {};
+                (justs || []).forEach(j => { justificacionesDelDia[String(j.alumno_id)] = j; });
+                console.log('📥 Justificaciones del día:', Object.keys(justificacionesDelDia));
+
+                alumnos = al.map(a => ({...a, estado: asisMap[String(a.id)] || null}));
                 renderizar();
                 contar();
                 console.log('✅ Alumnos cargados:', alumnos.length);
@@ -578,7 +590,8 @@
 
                 const btnJust = document.createElement('button');
                 btnJust.className = 'btn-adjuntar';
-                btnJust.textContent = '📷 Justificación';
+                const tieneJust = justificacionesDelDia[String(a.id)];
+                btnJust.textContent = tieneJust ? '👁️ Ver Justificación' : '📷 Justificación';
                 btnJust.style.marginTop = '8px';
                 btnJust.style.width = '100%';
                 btnJust.addEventListener('click', function(e) {
@@ -1346,13 +1359,6 @@
                 return;
             }
 
-            console.log('💾 [JUST] Guardando:', {
-                alumno_id: alumnoJustificacionId,
-                fecha: fechaSel,
-                nota: nota,
-                tieneArchivo: archivoInput.files.length > 0
-            });
-
             const formData = new FormData();
             formData.append('alumno_id', alumnoJustificacionId);
             formData.append('fecha', fechaSel);
@@ -1360,7 +1366,6 @@
 
             if (archivoInput.files.length) {
                 formData.append('archivo', archivoInput.files[0], archivoInput.files[0].name);
-                console.log('💾 [JUST] Archivo adjunto:', archivoInput.files[0].name, archivoInput.files[0].size);
             }
 
             const btnGuardar = document.getElementById('btn-guardar-justificacion');
@@ -1369,13 +1374,10 @@
             btnGuardar.disabled = true;
 
             try {
-                console.log('💾 [JUST] POST a:', `${API}/asistencia/justificacion`);
                 const r = await fetch(`${API}/asistencia/justificacion`, {
                     method: 'POST',
                     body: formData
                 });
-
-                console.log('💾 [JUST] POST status:', r.status, r.statusText);
 
                 let d;
                 const contentType = r.headers.get('content-type');
@@ -1383,20 +1385,26 @@
                     d = await r.json();
                 } else {
                     const text = await r.text();
-                    console.error('❌ [JUST] POST no-JSON:', text);
                     throw new Error('Servidor respondió ' + r.status + ': ' + text.substring(0, 200));
                 }
 
-                console.log('💾 [JUST] POST data:', d);
-
                 if (r.ok && d.success) {
+                    // Actualizar cache y re-renderizar para mostrar "Ver Justificación"
+                    justificacionesDelDia[String(alumnoJustificacionId)] = {
+                        alumno_id: alumnoJustificacionId,
+                        fecha: fechaSel,
+                        nota: nota,
+                        archivo_url: d.data && d.data[0] ? d.data[0].archivo_url : null,
+                        created_at: new Date().toISOString()
+                    };
+                    renderizar();
                     tg.showAlert('✅ Justificación guardada');
                     cerrarModal('modal-justificacion');
                 } else {
                     tg.showAlert('❌ Error: ' + (d.detail || d.message || JSON.stringify(d)));
                 }
             } catch (e) {
-                console.error('❌ [JUST] POST exception:', e);
+                console.error('Error guardando:', e);
                 tg.showAlert('Error guardando: ' + e.message);
             } finally {
                 btnGuardar.textContent = textoOriginal;
