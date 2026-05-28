@@ -32,7 +32,7 @@ class AuthRequest(BaseModel):
     initData: str
 
 class RegistroAsistencia(BaseModel):
-    alumno_id: str
+    alumno_id: int
     fecha: str
     estado: str
     hora: str
@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Asistencia Escolar API",
     description="Backend para Control de Asistencia - Telegram Mini App",
-    version="2.0.1",
+    version="2.0.2",
     lifespan=lifespan
 )
 
@@ -125,7 +125,7 @@ def verify_telegram_init_data(init_data: str) -> dict:
 @app.get("/api")
 @app.get("/api/")
 async def root():
-    return {"status": "ok", "modo": "online", "version": "2.0.1"}
+    return {"status": "ok", "modo": "online", "version": "2.0.2"}
 
 
 @app.post("/api/auth")
@@ -251,8 +251,9 @@ async def get_reporte(desde: str, hasta: str, grado: Optional[str] = None, secci
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# FIX: alumno_id como str (UUID) en vez de int
 @app.get("/api/asistencia/justificacion")
-async def get_justificaciones(alumno_id: Optional[int] = None, fecha: Optional[str] = None, desde: Optional[str] = None, hasta: Optional[str] = None):
+async def get_justificaciones(alumno_id: Optional[str] = None, fecha: Optional[str] = None, desde: Optional[str] = None, hasta: Optional[str] = None):
     try:
         query = supabase.table("justificaciones").select("*")
 
@@ -272,10 +273,12 @@ async def get_justificaciones(alumno_id: Optional[int] = None, fecha: Optional[s
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# FIX CRITICO: UploadFile opcional SIN File() para evitar 422 cuando no hay archivo
+# FIX CRITICO:
+# 1. alumno_id como str (UUID) en vez de int
+# 2. archivo: Optional[UploadFile] = None (SIN File()) para evitar 422 sin archivo
 @app.post("/api/asistencia/justificacion")
 async def guardar_justificacion(
-    alumno_id: int = Form(...),
+    alumno_id: str = Form(...),
     fecha: str = Form(...),
     nota: str = Form(default=""),
     archivo: Optional[UploadFile] = None
