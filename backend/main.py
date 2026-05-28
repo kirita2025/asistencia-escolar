@@ -32,7 +32,7 @@ class AuthRequest(BaseModel):
     initData: str
 
 class RegistroAsistencia(BaseModel):
-    alumno_id: int
+    alumno_id: str
     fecha: str
     estado: str
     hora: str
