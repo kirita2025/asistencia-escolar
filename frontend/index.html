@@ -646,21 +646,35 @@
 
         async function guardar() {
             const regs = alumnos.filter(a => a.estado).map(a => ({
-                alumno_id: a.id, fecha: fechaSel, estado: a.estado,
+                alumno_id: String(a.id),  // ✅ Forzar a string explícitamente
+                fecha: fechaSel,
+                estado: a.estado,
                 hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}),
                 user_id: user?.id || 0
             }));
-            if (!regs.length) { tg.showAlert('No hay asistencia para guardar'); return; }
+            
+            if (!regs.length) { 
+                tg.showAlert('No hay asistencia para guardar'); 
+                return; 
+            }
+            
             const btn = document.getElementById('btn-guardar');
             const orig = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ Guardando...';
+            
             try {
+                console.log('📤 Enviando registros:', regs); // Debug: ver qué se envía
+                
                 const r = await fetch(`${API}/asistencia/registrar`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({registros: regs, user_id: user?.id || 0})
                 });
+                
                 const d = await r.json();
+                console.log('📥 Respuesta del servidor:', d); // Debug: ver respuesta
+                
                 const toast = document.getElementById('toast');
                 if (toast) {
                     toast.textContent = d.modo === 'online' ? `✅ Guardado (${d.registros} registros)` : `💾 ${d.mensaje||'Guardado'}`;
@@ -668,12 +682,18 @@
                     toast.classList.add('show');
                     setTimeout(() => toast.classList.remove('show'), 3000);
                 }
-                console.log('✅ Guardado:', d);
+                
+                if (d.success) {
+                    console.log('✅ Guardado exitoso:', d.registros, 'registros');
+                    // Recargar para mostrar los datos guardados
+                    setTimeout(() => cargar(), 500);
+                } else {
+                    tg.showAlert('Error: ' + (d.detail || 'No se pudo guardar'));
+                }
             } catch (e) {
                 console.error('❌ Error guardando:', e);
                 tg.showAlert('Error: ' + e.message);
             } finally {
-                const btn = document.getElementById('btn-guardar');
                 btn.disabled = false;
                 btn.textContent = orig;
             }
