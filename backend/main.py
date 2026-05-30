@@ -1,4 +1,4 @@
-# main.py - CORREGIDO
+# main.py - VERSIÓN CORREGIDA (UUID string en lugar de int)
 
 import os
 import uuid
@@ -34,7 +34,7 @@ class AuthRequest(BaseModel):
     initData: str
 
 class RegistroAsistencia(BaseModel):
-    alumno_id: int
+    alumno_id: str  # ✅ CORREGIDO: Ahora es UUID string, no int
     fecha: str
     estado: str
     hora: str
@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Asistencia Escolar API",
     description="Backend para Control de Asistencia - Telegram Mini App",
-    version="2.0.4",
+    version="2.0.5",
     lifespan=lifespan
 )
 
@@ -119,7 +119,6 @@ def verify_telegram_init_data(init_data: str) -> dict:
         return user_data
 
     except Exception as e:
-        # En desarrollo, permitir modo demo
         print(f"Auth error: {e}")
         return {"id": 0, "first_name": "Demo User", "username": "demo"}
 
@@ -129,7 +128,7 @@ def verify_telegram_init_data(init_data: str) -> dict:
 @app.get("/api")
 @app.get("/api/")
 async def root():
-    return {"status": "ok", "modo": "online", "version": "2.0.4"}
+    return {"status": "ok", "modo": "online", "version": "2.0.5"}
 
 
 @app.post("/api/auth")
@@ -147,7 +146,6 @@ async def auth(request: AuthRequest):
     except HTTPException:
         raise
     except Exception as e:
-        # En desarrollo, permitir acceso demo
         return {
             "success": True, 
             "user": {
@@ -169,7 +167,12 @@ async def get_alumnos(grado: Optional[str] = None, seccion: Optional[str] = None
             query = query.eq("seccion", seccion)
 
         result = query.execute()
-        return result.data or []
+        # Convertir UUID a string para el frontend
+        alumnos = []
+        for a in result.data or []:
+            a["id"] = str(a["id"])  # ✅ Convertir UUID a string
+            alumnos.append(a)
+        return alumnos
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -182,6 +185,11 @@ async def get_asistencia_hoy(fecha: str, grado: Optional[str] = None, seccion: O
         result = supabase.table("asistencia").select("*").eq("fecha", fecha).execute()
         asistencias = result.data or []
 
+        # Convertir UUID a string
+        for a in asistencias:
+            if "alumno_id" in a:
+                a["alumno_id"] = str(a["alumno_id"])
+
         # Si piden grado/seccion, obtener IDs de alumnos de ese filtro
         if grado or seccion:
             aq = supabase.table("alumnos").select("id")
@@ -190,8 +198,8 @@ async def get_asistencia_hoy(fecha: str, grado: Optional[str] = None, seccion: O
             if seccion:
                 aq = aq.eq("seccion", seccion)
             alumnos_filtrados = aq.execute().data or []
-            ids_validos = {a["id"] for a in alumnos_filtrados}
-            asistencias = [a for a in asistencias if a.get("alumno_id") in ids_validos]
+            ids_validos = {str(a["id"]) for a in alumnos_filtrados}
+            asistencias = [a for a in asistencias if str(a.get("alumno_id")) in ids_validos]
 
         return {"asistencia": asistencias}
 
@@ -205,7 +213,7 @@ async def registrar_asistencia(request: GuardarAsistenciaRequest):
         registros = []
         for r in request.registros:
             registros.append({
-                "alumno_id": r.alumno_id,
+                "alumno_id": r.alumno_id,  # ✅ Ahora es string UUID
                 "fecha": r.fecha,
                 "estado": r.estado,
                 "hora": r.hora,
@@ -213,6 +221,7 @@ async def registrar_asistencia(request: GuardarAsistenciaRequest):
                 "created_at": datetime.utcnow().isoformat()
             })
 
+        print(f"📝 Guardando {len(registros)} registros")  # Debug log
         result = supabase.table("asistencia").upsert(
             registros,
             on_conflict="alumno_id,fecha"
@@ -226,6 +235,7 @@ async def registrar_asistencia(request: GuardarAsistenciaRequest):
         }
 
     except Exception as e:
+        print(f"❌ Error guardando asistencia: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -245,39 +255,23 @@ async def get_reporte(desde: str, hasta: str, grado: Optional[str] = None, secci
         if not alumnos_data:
             return []
         
-        # Obtener IDs de alumnos filtrados
-        alumnos_ids = [a["id"] for a in alumnos_data]
+        # Obtener IDs de alumnos filtrados como strings
+        alumnos_ids = [str(a["id"]) for a in alumnos_data]
         
-        # Obtener asistencias solo de esos alumnos en el rango de fechas
-        # Supabase no soporta "in" directamente con lista grande, hacer consulta por separado
-        todas_asistencias = []
+        # Obtener todas las asistencias en el rango
+        asistencias_result = supabase.table("asistencia").select("*").gte("fecha", desde).lte("fecha", hasta).execute()
+        todas_asistencias = asistencias_result.data or []
         
-        # Consultar asistencias para cada alumno o en rango
-        # Mejor: consultar todas las asistencias en el rango y luego filtrar
-        asistencias_query = supabase.table("asistencia").select("*").gte("fecha", desde).lte("fecha", hasta)
-        
-        # Si hay pocos alumnos, podemos filtrar por alumno_id
-        if len(alumnos_ids) <= 100:
-            # Convertir a strings para la consulta (manejar tanto int como string)
-            alumnos_ids_str = [str(aid) for aid in alumnos_ids]
-            # Construir condicion OR para los IDs (supabase no tiene IN facil)
-            # Usamos filtro multiple: eq alumno_id en lista
-            # Alternativa: obtener todas y filtrar en Python
-            asistencias_result = asistencias_query.execute()
-            todas_asistencias = asistencias_result.data or []
-            # Filtrar por alumno_id
-            todas_asistencias = [a for a in todas_asistencias if a.get("alumno_id") in alumnos_ids]
-        else:
-            asistencias_result = asistencias_query.execute()
-            todas_asistencias = asistencias_result.data or []
+        # Filtrar asistencias solo de los alumnos seleccionados
+        todas_asistencias = [a for a in todas_asistencias if str(a.get("alumno_id")) in alumnos_ids]
         
         # Crear diccionario de alumnos
-        alumnos_dict = {a["id"]: a for a in alumnos_data}
+        alumnos_dict = {str(a["id"]): a for a in alumnos_data}
         
         # Construir reporte
         reporte = {}
         for asistencia in todas_asistencias:
-            alumno_id = asistencia.get("alumno_id")
+            alumno_id = str(asistencia.get("alumno_id"))
             if alumno_id not in alumnos_dict:
                 continue
                 
@@ -298,7 +292,7 @@ async def get_reporte(desde: str, hasta: str, grado: Optional[str] = None, secci
                 reporte[alumno_id][estado] += 1
             reporte[alumno_id]["dias"] += 1
         
-        # Incluir alumnos sin asistencia registrada (todos ausentes)
+        # Incluir alumnos sin asistencia
         for alumno_id, alumno in alumnos_dict.items():
             if alumno_id not in reporte:
                 reporte[alumno_id] = {
@@ -333,7 +327,12 @@ async def get_justificaciones(alumno_id: Optional[str] = None, fecha: Optional[s
             query = query.lte("fecha", hasta)
 
         result = query.execute()
-        return result.data or []
+        # Convertir UUID a string
+        justs = result.data or []
+        for j in justs:
+            if "alumno_id" in j:
+                j["alumno_id"] = str(j["alumno_id"])
+        return justs
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
