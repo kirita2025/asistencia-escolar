@@ -121,6 +121,7 @@
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <div class="app">
@@ -257,6 +258,7 @@
         let alumnos = [];
         let fechaSel = new Date().toISOString().split('T')[0];
         let alumnoJustificacionId = null;
+        let alumnoEditandoId = null;
         let reporteData = [];
         let justificacionExistente = null;
         let justificacionesDelDia = {};
@@ -278,6 +280,9 @@
                 alumno_nombre: "Nombre", alumno_apellido_paterno: "Apellido Paterno", alumno_apellido_materno: "Apellido Materno",
                 alumno_matricula: "Matrícula", alumno_grado: "Grado", alumno_seccion: "Sección",
                 alumno_exito: "✅ Alumno agregado", alumno_error: "Error agregando alumno: ", alumno_matricula_existe: "La matrícula ya existe",
+                alumno_editar: "✏️ Editar Alumno", alumno_eliminar: "🗑️ Eliminar Alumno", alumno_guardar_cambios: "💾 Guardar Cambios",
+                alumno_eliminado: "✅ Alumno eliminado", alumno_confirmar_eliminar: "¿Eliminar a {nombre}? Esta acción no se puede deshacer.",
+                alumno_tiene_asistencia: "No se puede eliminar: tiene asistencia registrada", alumno_tiene_justificaciones: "No se puede eliminar: tiene justificaciones registradas",
                 estados: { P: "Presente", A: "Ausente", T: "Tardanza", J: "Justificado", E: "Excursión" },
                 loading_alumnos: "⏳ Cargando alumnos...", no_alumnos: "No hay alumnos",
                 sin_asistencia: "No hay asistencia para guardar", error_guardar: "Error: ",
@@ -307,6 +312,9 @@
                 alumno_nombre: "First Name", alumno_apellido_paterno: "Last Name", alumno_apellido_materno: "Mother's Last Name",
                 alumno_matricula: "Student ID", alumno_grado: "Grade", alumno_seccion: "Section",
                 alumno_exito: "✅ Student added", alumno_error: "Error adding student: ", alumno_matricula_existe: "Student ID already exists",
+                alumno_editar: "✏️ Edit Student", alumno_eliminar: "🗑️ Delete Student", alumno_guardar_cambios: "💾 Save Changes",
+                alumno_eliminado: "✅ Student deleted", alumno_confirmar_eliminar: "Delete {nombre}? This action cannot be undone.",
+                alumno_tiene_asistencia: "Cannot delete: attendance records exist", alumno_tiene_justificaciones: "Cannot delete: justification records exist",
                 estados: { P: "Present", A: "Absent", T: "Late", J: "Excused", E: "Field Trip" },
                 loading_alumnos: "⏳ Loading students...", no_alumnos: "No students",
                 sin_asistencia: "No attendance to save", error_guardar: "Error: ",
@@ -336,6 +344,9 @@
                 alumno_nombre: "Nome", alumno_apellido_paterno: "Sobrenome Paterno", alumno_apellido_materno: "Sobrenome Materno",
                 alumno_matricula: "Matrícula", alumno_grado: "Série", alumno_seccion: "Turma",
                 alumno_exito: "✅ Aluno adicionado", alumno_error: "Erro ao adicionar aluno: ", alumno_matricula_existe: "Matrícula já existe",
+                alumno_editar: "✏️ Editar Aluno", alumno_eliminar: "🗑️ Excluir Aluno", alumno_guardar_cambios: "💾 Salvar Alterações",
+                alumno_eliminado: "✅ Aluno excluído", alumno_confirmar_eliminar: "Excluir {nombre}? Esta ação não pode ser desfeita.",
+                alumno_tiene_asistencia: "Não é possível excluir: há registros de frequência", alumno_tiene_justificaciones: "Não é possível excluir: há justificativas registradas",
                 estados: { P: "Presente", A: "Ausente", T: "Atraso", J: "Justificado", E: "Excursão" },
                 loading_alumnos: "⏳ Carregando alunos...", no_alumnos: "Nenhum aluno",
                 sin_asistencia: "Nenhuma frequência para salvar", error_guardar: "Erro: ",
@@ -365,6 +376,9 @@
                 alumno_nombre: "ชื่อ", alumno_apellido_paterno: "นามสกุล", alumno_apellido_materno: "นามสกุลมารดา",
                 alumno_matricula: "รหัสนักเรียน", alumno_grado: "ระดับชั้น", alumno_seccion: "ห้อง",
                 alumno_exito: "✅ เพิ่มนักเรียนแล้ว", alumno_error: "ข้อผิดพลาดในการเพิ่มนักเรียน: ", alumno_matricula_existe: "รหัสนักเรียนมีอยู่แล้ว",
+                alumno_editar: "✏️ แก้ไขนักเรียน", alumno_eliminar: "🗑️ ลบนักเรียน", alumno_guardar_cambios: "💾 บันทึกการเปลี่ยนแปลง",
+                alumno_eliminado: "✅ ลบนักเรียนแล้ว", alumno_confirmar_eliminar: "ลบ {nombre} หรือไม่? การกระทำนี้ไม่สามารถยกเลิกได้",
+                alumno_tiene_asistencia: "ไม่สามารถลบได้: มีบันทึกการเข้าเรียน", alumno_tiene_justificaciones: "ไม่สามารถลบได้: มีหนังสืออนุญาต",
                 estados: { P: "มาเรียน", A: "ขาดเรียน", T: "มาสาย", J: "ขาดเรียนมีเหตุผล", E: "ไปทัศนศึกษานอกสถานที่" },
                 loading_alumnos: "⏳ กำลังโหลดนักเรียน...", no_alumnos: "ไม่มีนักเรียน",
                 sin_asistencia: "ไม่มีข้อมูลการเข้าเรียนที่จะบันทึก", error_guardar: "ข้อผิดพลาด: ",
@@ -572,9 +586,32 @@
                 btnJust.style.marginTop = '8px';
                 btnJust.style.width = '100%';
                 btnJust.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); abrirJustificacion(a.id); });
+
+                const btnEditar = document.createElement('button');
+                btnEditar.className = 'btn-adjuntar';
+                btnEditar.textContent = t('alumno_editar');
+                btnEditar.style.marginTop = '4px';
+                btnEditar.style.width = '100%';
+                btnEditar.style.background = '#e3f2fd';
+                btnEditar.style.borderColor = '#2196f3';
+                btnEditar.style.color = '#2196f3';
+                btnEditar.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); abrirModalEditarAlumno(a); });
+
+                const btnEliminar = document.createElement('button');
+                btnEliminar.className = 'btn-adjuntar';
+                btnEliminar.textContent = t('alumno_eliminar');
+                btnEliminar.style.marginTop = '4px';
+                btnEliminar.style.width = '100%';
+                btnEliminar.style.background = '#ffebee';
+                btnEliminar.style.borderColor = '#f44336';
+                btnEliminar.style.color = '#f44336';
+                btnEliminar.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); confirmarEliminarAlumno(a); });
+
                 const justDiv = document.createElement('div');
                 justDiv.style.marginTop = '6px';
                 justDiv.appendChild(btnJust);
+                justDiv.appendChild(btnEditar);
+                justDiv.appendChild(btnEliminar);
                 card.appendChild(justDiv);
                 card.appendChild(header);
                 card.appendChild(estadosDiv);
@@ -708,6 +745,18 @@
                     document.getElementById('btn-guardar-justificacion').onclick = guardarJustificacion;
                     document.getElementById('modal-justificacion-titulo').textContent = t('modal_justificacion_title_new');
                     justificacionExistente = null;
+                }, 300);
+            }
+            if (id === 'modal-alumno') {
+                setTimeout(() => {
+                    alumnoEditandoId = null;
+                    document.getElementById('btn-guardar-alumno').onclick = guardarAlumno;
+                    document.getElementById('alumno-nombre').value = '';
+                    document.getElementById('alumno-apellido-paterno').value = '';
+                    document.getElementById('alumno-apellido-materno').value = '';
+                    document.getElementById('alumno-matricula').value = '';
+                    document.getElementById('alumno-grado').value = '';
+                    document.getElementById('alumno-seccion').value = '';
                 }, 300);
             }
         }
@@ -1028,9 +1077,11 @@
 
         // ==================== AGREGAR ALUMNO ====================
         function abrirModalAlumno() {
+            alumnoEditandoId = null;
             document.getElementById('modal-alumno').classList.add('show');
             document.getElementById('modal-alumno-titulo').textContent = t('modal_alumno_title');
             document.getElementById('btn-guardar-alumno').textContent = t('btn_guardar_alumno');
+            document.getElementById('btn-guardar-alumno').onclick = guardarAlumno;
             // Actualizar placeholders con traducciones
             document.getElementById('alumno-nombre').placeholder = t('alumno_nombre');
             document.getElementById('alumno-apellido-paterno').placeholder = t('alumno_apellido_paterno');
@@ -1090,6 +1141,105 @@
                 tg.showAlert(t('alumno_error') + e.message);
             } finally {
                 btn.disabled = false; btn.textContent = orig;
+            }
+        }
+
+        // ==================== CRUD ALUMNOS ====================
+        function abrirModalEditarAlumno(alumno) {
+            alumnoEditandoId = alumno.id;
+            document.getElementById('modal-alumno').classList.add('show');
+            document.getElementById('modal-alumno-titulo').textContent = t('alumno_editar');
+            document.getElementById('btn-guardar-alumno').textContent = t('alumno_guardar_cambios');
+            document.getElementById('btn-guardar-alumno').onclick = guardarCambiosAlumno;
+
+            document.getElementById('alumno-nombre').value = alumno.nombre || '';
+            document.getElementById('alumno-apellido-paterno').value = alumno.apellido_paterno || '';
+            document.getElementById('alumno-apellido-materno').value = alumno.apellido_materno || '';
+            document.getElementById('alumno-matricula').value = alumno.matricula || '';
+            document.getElementById('alumno-grado').value = alumno.grado || '';
+            document.getElementById('alumno-seccion').value = alumno.seccion || '';
+
+            document.getElementById('alumno-nombre').placeholder = t('alumno_nombre');
+            document.getElementById('alumno-apellido-paterno').placeholder = t('alumno_apellido_paterno');
+            document.getElementById('alumno-apellido-materno').placeholder = t('alumno_apellido_materno');
+            document.getElementById('alumno-matricula').placeholder = t('alumno_matricula');
+            document.getElementById('alumno-grado').placeholder = t('alumno_grado');
+            document.getElementById('alumno-seccion').placeholder = t('alumno_seccion');
+        }
+
+        async function guardarCambiosAlumno() {
+            if (!alumnoEditandoId) return;
+
+            const nombre = document.getElementById('alumno-nombre').value.trim();
+            const apellidoPaterno = document.getElementById('alumno-apellido-paterno').value.trim();
+            const apellidoMaterno = document.getElementById('alumno-apellido-materno').value.trim();
+            const matricula = document.getElementById('alumno-matricula').value.trim();
+            const grado = document.getElementById('alumno-grado').value.trim();
+            const seccion = document.getElementById('alumno-seccion').value.trim();
+
+            if (!nombre || !matricula || !grado || !seccion) {
+                tg.showAlert('Completa nombre, matrícula, grado y sección');
+                return;
+            }
+
+            const btn = document.getElementById('btn-guardar-alumno');
+            const orig = btn.textContent;
+            btn.disabled = true; btn.textContent = t('guardando');
+
+            try {
+                const formData = new FormData();
+                formData.append('nombre', nombre);
+                formData.append('apellido_paterno', apellidoPaterno);
+                formData.append('apellido_materno', apellidoMaterno);
+                formData.append('matricula', matricula);
+                formData.append('grado', grado);
+                formData.append('seccion', seccion);
+
+                const r = await fetch(`${API}/alumnos/${alumnoEditandoId}`, { method: 'PUT', body: formData });
+                const d = await r.json();
+
+                if (r.ok && d.success) {
+                    tg.showAlert(t('alumno_exito'));
+                    cerrarModal('modal-alumno');
+                    alumnoEditandoId = null;
+                    document.getElementById('btn-guardar-alumno').onclick = guardarAlumno;
+                    cargarFiltros();
+                    cargar();
+                } else {
+                    const msg = d.detail || d.message || '';
+                    if (r.status === 409) tg.showAlert(t('alumno_matricula_existe'));
+                    else tg.showAlert(t('alumno_error') + msg);
+                }
+            } catch (e) {
+                tg.showAlert(t('alumno_error') + e.message);
+            } finally {
+                btn.disabled = false; btn.textContent = orig;
+            }
+        }
+
+        function confirmarEliminarAlumno(alumno) {
+            tg.showConfirm(t('alumno_confirmar_eliminar', {nombre: alumno.nombre}), (confirmado) => {
+                if (confirmado) eliminarAlumno(alumno.id);
+            });
+        }
+
+        async function eliminarAlumno(alumnoId) {
+            try {
+                const r = await fetch(`${API}/alumnos/${alumnoId}`, { method: 'DELETE' });
+                const d = await r.json();
+
+                if (r.ok && d.success) {
+                    tg.showAlert(t('alumno_eliminado'));
+                    cargarFiltros();
+                    cargar();
+                } else {
+                    const msg = d.detail || '';
+                    if (msg.includes('asistencia')) tg.showAlert(t('alumno_tiene_asistencia'));
+                    else if (msg.includes('justificaciones')) tg.showAlert(t('alumno_tiene_justificaciones'));
+                    else tg.showAlert(t('alumno_error') + msg);
+                }
+            } catch (e) {
+                tg.showAlert(t('alumno_error') + e.message);
             }
         }
 
