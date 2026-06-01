@@ -230,7 +230,7 @@
                 btn_csv: "📄 Descargar CSV", btn_pdf: "📕 Descargar PDF", btn_excel: "📗 Descargar Excel",
                 modal_justificacion_title_new: "📝 Nueva Justificación", modal_justificacion_title_view: "👁️ Ver Justificación",
                 justificacion_placeholder: "Motivo de la justificación...", btn_adjuntar: "📷 Adjuntar foto",
-                btn_guardar_just: "Guardar Justificación", btn_cerrar_just: "✅ Cerrar",
+                btn_guardar_just: "Guardar Justificación", btn_ver_just: "👁️ Ver Justificación", btn_cerrar_just: "✅ Cerrar",
                 estados: { P: "Presente", A: "Ausente", T: "Tardanza", J: "Justificado", E: "Excursión" },
                 loading_alumnos: "⏳ Cargando alumnos...", no_alumnos: "No hay alumnos",
                 sin_asistencia: "No hay asistencia para guardar", error_guardar: "Error: ",
@@ -255,7 +255,7 @@
                 btn_csv: "📄 Download CSV", btn_pdf: "📕 Download PDF", btn_excel: "📗 Download Excel",
                 modal_justificacion_title_new: "📝 New Justification", modal_justificacion_title_view: "👁️ View Justification",
                 justificacion_placeholder: "Reason for justification...", btn_adjuntar: "📷 Attach photo",
-                btn_guardar_just: "Save Justification", btn_cerrar_just: "✅ Close",
+                btn_guardar_just: "Save Justification", btn_ver_just: "👁️ View Justification", btn_cerrar_just: "✅ Close",
                 estados: { P: "Present", A: "Absent", T: "Late", J: "Excused", E: "Field Trip" },
                 loading_alumnos: "⏳ Loading students...", no_alumnos: "No students",
                 sin_asistencia: "No attendance to save", error_guardar: "Error: ",
@@ -280,7 +280,7 @@
                 btn_csv: "📄 Baixar CSV", btn_pdf: "📕 Baixar PDF", btn_excel: "📗 Baixar Excel",
                 modal_justificacion_title_new: "📝 Nova Justificativa", modal_justificacion_title_view: "👁️ Ver Justificativa",
                 justificacion_placeholder: "Motivo da justificativa...", btn_adjuntar: "📷 Anexar foto",
-                btn_guardar_just: "Salvar Justificativa", btn_cerrar_just: "✅ Fechar",
+                btn_guardar_just: "Salvar Justificativa", btn_ver_just: "👁️ Ver Justificativa", btn_cerrar_just: "✅ Fechar",
                 estados: { P: "Presente", A: "Ausente", T: "Atraso", J: "Justificado", E: "Excursão" },
                 loading_alumnos: "⏳ Carregando alunos...", no_alumnos: "Nenhum aluno",
                 sin_asistencia: "Nenhuma frequência para salvar", error_guardar: "Erro: ",
@@ -305,7 +305,7 @@
                 btn_generar_reporte: "สร้างรายงาน", btn_csv: "📄 ดาวน์โหลด CSV", btn_pdf: "📕 ดาวน์โหลด PDF", btn_excel: "📗 ดาวน์โหลด Excel",
                 modal_justificacion_title_new: "📝 หนังสืออนุญาตใหม่", modal_justificacion_title_view: "👁️ ดูหนังสืออนุญาต",
                 justificacion_placeholder: "เหตุผล...", btn_adjuntar: "📷 แนบรูปภาพ",
-                btn_guardar_just: "บันทึกหนังสืออนุญาต", btn_cerrar_just: "✅ ปิด",
+                btn_guardar_just: "บันทึกหนังสืออนุญาต", btn_ver_just: "👁️ ดูหนังสืออนุญาต", btn_cerrar_just: "✅ ปิด",
                 estados: { P: "มาเรียน", A: "ขาดเรียน", T: "มาสาย", J: "ขาดเรียนมีเหตุผล", E: "ไปทัศนศึกษานอกสถานที่" },
                 loading_alumnos: "⏳ กำลังโหลดนักเรียน...", no_alumnos: "ไม่มีนักเรียน",
                 sin_asistencia: "ไม่มีข้อมูลการเข้าเรียนที่จะบันทึก", error_guardar: "ข้อผิดพลาด: ",
@@ -329,7 +329,7 @@
             return text;
         }
 
-        function getEstadoLabel(cod) { return translations[currentLang]?.estados?.[cod] || translations['es']?.estados?.[cod] || cod; }
+        function getEstadoLabel(cod) { return t(`estados.${cod}`); }
 
         function applyTranslations() {
             document.getElementById('app-title').textContent = t('app_title');
@@ -503,7 +503,7 @@
                 const btnJust = document.createElement('button');
                 btnJust.className = 'btn-adjuntar';
                 const tieneJust = justificacionesDelDia[String(a.id)];
-                btnJust.textContent = tieneJust ? '👁️ ' + t('btn_cerrar_just') : '📷 ' + t('btn_adjuntar');
+                btnJust.textContent = tieneJust ? t('btn_ver_just') : '📷 ' + t('btn_adjuntar');
                 btnJust.style.marginTop = '8px';
                 btnJust.style.width = '100%';
                 btnJust.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); abrirJustificacion(a.id); });
