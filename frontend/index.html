@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Control de Asistencia</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Librerias para exportar PDF y Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
-    <!-- Atrapador Global de Errores Visuales -->
     <script>
         window.addEventListener('error', function(e) {
             const b = document.getElementById('modo-badge');
@@ -18,7 +16,6 @@
             const l = document.getElementById('lista');
             if(l) l.innerHTML = '<div class="error-msg"><b>Error de Código:</b><br>' + e.message + '</div>';
         });
-
         window.addEventListener('unhandledrejection', function(e) {
             const b = document.getElementById('modo-badge');
             if(b) b.textContent = '🔴 Promesa Rota';
@@ -32,8 +29,10 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
         .app { max-width: 430px; margin: 0 auto; min-height: 100vh; position: relative; }
         .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px 16px; }
-        .status-bar { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 8px; }
+        .status-bar { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
         .modo-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; }
+        .idioma-select { background: rgba(255,255,255,0.2); border: none; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; cursor: pointer; }
+        .idioma-select option { background: #333; color: white; }
         .header h1 { font-size: 1.1rem; margin-bottom: 2px; }
         .fecha { font-size: 0.8rem; opacity: 0.9; text-transform: capitalize; }
         .fecha-selector { background: white; padding: 12px 16px; border-bottom: 1px solid #e8e8e8; }
@@ -45,8 +44,8 @@
         .filtros { display: flex; gap: 8px; padding: 10px 16px; background: white; border-bottom: 1px solid #e8e8e8; }
         .filtros select { flex: 1; padding: 10px 8px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.9rem; }
         .btn-cargar { padding: 10px 14px; background: #667eea; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
-        .contador { display: flex; justify-content: space-around; padding: 10px; background: white; margin-top: 6px; border-bottom: 1px solid #e8e8e8; }
-        .contador div { text-align: center; }
+        .contador { display: flex; justify-content: space-around; padding: 10px; background: white; margin-top: 6px; border-bottom: 1px solid #e8e8e8; flex-wrap: wrap; }
+        .contador div { text-align: center; min-width: 50px; }
         .num { font-size: 1.4rem; font-weight: 700; display: block; }
         .label { font-size: 0.65rem; color: #888; text-transform: uppercase; }
         .presente { color: #4caf50; } .ausente { color: #f44336; } .tardanza { color: #ff9800; } .pendiente { color: #9e9e9e; } .justificado { color: #2196f3; } .excursion { color: #9c27b0; }
@@ -66,7 +65,7 @@
         .estados button.sel-j { background: #2196f3; color: white; border-color: #2196f3; }
         .estados button.sel-e { background: #9c27b0; color: white; border-color: #9c27b0; }
         .estados button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .acciones { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e8e8e8; padding: 12px 16px 24px; display: flex; gap: 10px; max-width: 430px; margin: 0 auto; }
+        .acciones { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e8e8e8; padding: 12px 16px 24px; display: flex; gap: 10px; max-width: 430px; margin: 0 auto; z-index: 100; }
         .acciones button { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
         .btn-guardar { background: linear-gradient(135deg, #4caf50, #45a049); color: white; }
         .btn-guardar:disabled { background: #ccc; }
@@ -75,181 +74,46 @@
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .loading { text-align: center; padding: 40px; color: #888; }
         .error { text-align: center; padding: 40px; color: #f44336; }
-        .estados button {
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
-            user-select: none;
-        }
-        .estados button:active {
-            transform: scale(0.95);
-            transition: transform 0.1s ease;
-        }
-        .busqueda-bar {
-            display: flex;
-            gap: 8px;
-            padding: 10px 16px;
-            background: white;
-            border-bottom: 1px solid #e8e8e8;
-            animation: fadeIn 0.3s ease;
-        }
-        .busqueda-bar input {
-            flex: 1;
-            padding: 10px 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            -webkit-appearance: none;
-            appearance: none;
-        }
+        .estados button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; }
+        .estados button:active { transform: scale(0.95); transition: transform 0.1s ease; }
+        .busqueda-bar { display: flex; gap: 8px; padding: 10px 16px; background: white; border-bottom: 1px solid #e8e8e8; animation: fadeIn 0.3s ease; }
+        .busqueda-bar input { flex: 1; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.9rem; font-family: inherit; -webkit-appearance: none; appearance: none; }
         .busqueda-bar input:focus { outline: none; border-color: #667eea; }
-        .btn-todos-p {
-            padding: 10px 14px;
-            background: #4caf50;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 0.8rem;
-            white-space: nowrap;
-            -webkit-appearance: none;
-            appearance: none;
-        }
+        .btn-todos-p { padding: 10px 14px; background: #4caf50; color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 0.8rem; white-space: nowrap; -webkit-appearance: none; appearance: none; }
         .btn-todos-p:active { transform: scale(0.95); }
-        .card.destacado {
-            box-shadow: 0 0 0 2px #667eea, 0 4px 12px rgba(102, 126, 234, 0.2);
-            transform: scale(1.02);
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
+        .card.destacado { box-shadow: 0 0 0 2px #667eea, 0 4px 12px rgba(102, 126, 234, 0.2); transform: scale(1.02); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; }
         .modal-overlay.show { display: flex; }
-        .modal {
-            background: white;
-            border-radius: 16px;
-            width: 90%;
-            max-width: 400px;
-            max-height: 80vh;
-            overflow-y: auto;
-            padding: 20px;
-            animation: modalIn 0.3s ease;
-        }
-        @keyframes modalIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
+        .modal { background: white; border-radius: 16px; width: 90%; max-width: 400px; max-height: 80vh; overflow-y: auto; padding: 20px; animation: modalIn 0.3s ease; }
+        @keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .modal-header h2 { font-size: 1.1rem; color: #333; }
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #888;
-        }
+        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #888; }
         .modal-body { font-size: 0.9rem; }
-        .reporte-filtros {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-        .reporte-filtros input {
-            flex: 1;
-            padding: 8px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-family: inherit;
-            font-size: 0.85rem;
-        }
-        .reporte-tabla {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8rem;
-        }
-        .reporte-tabla th {
-            background: #f5f5f5;
-            padding: 8px;
-            text-align: left;
-            font-weight: 700;
-            position: sticky;
-            top: 0;
-        }
-        .reporte-tabla td {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-        }
+        .reporte-filtros { display: flex; gap: 8px; margin-bottom: 16px; }
+        .reporte-filtros input { flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px; font-family: inherit; font-size: 0.85rem; }
+        .reporte-tabla { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .reporte-tabla th { background: #f5f5f5; padding: 8px; text-align: left; font-weight: 700; position: sticky; top: 0; }
+        .reporte-tabla td { padding: 8px; border-bottom: 1px solid #eee; }
         .reporte-tabla tr:hover { background: #f9f9f9; }
-        .btn-modal {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 8px;
-            font-family: inherit;
-            font-size: 0.9rem;
-        }
+        .btn-modal { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; font-size: 0.9rem; }
         .btn-exportar-csv { background: #4caf50; color: white; }
         .btn-exportar-pdf { background: #f44336; color: white; }
         .btn-exportar-excel { background: #2196f3; color: white; }
-        .estadistica-bar {
-            display: flex;
-            height: 8px;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 4px 0;
-        }
+        .estadistica-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 4px 0; }
         .est-p { background: #4caf50; }
         .est-a { background: #f44336; }
         .est-t { background: #ff9800; }
         .est-j { background: #2196f3; }
         .est-e { background: #9c27b0; }
-        .justificacion-input {
-            display: none;
-        }
-        .btn-adjuntar {
-            font-size: 0.75rem;
-            padding: 6px 10px;
-            background: #f0f0f0;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 4px;
-            font-family: inherit;
-        }
-        .adjunto-preview {
-            max-width: 100%;
-            border-radius: 8px;
-            margin-top: 8px;
-            border: 1px solid #ddd;
-        }
-        .justificacion-info {
-            font-size: 0.8rem;
-            color: #666;
-            margin: 8px 0;
-            padding: 8px;
-            background: #f9f9f9;
-            border-radius: 6px;
-        }
+        .justificacion-input { display: none; }
+        .btn-adjuntar { font-size: 0.75rem; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; margin-top: 4px; font-family: inherit; }
+        .adjunto-preview { max-width: 100%; border-radius: 8px; margin-top: 8px; border: 1px solid #ddd; }
+        .justificacion-info { font-size: 0.8rem; color: #666; margin: 8px 0; padding: 8px; background: #f9f9f9; border-radius: 6px; }
     </style>
+<base target="_blank">
+<base target="_blank">
 </head>
 <body>
     <div class="app">
@@ -258,41 +122,47 @@
                 <span id="hora">--:--</span>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <button onclick="abrirQRScanner()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 10px;border-radius:10px;font-size:0.7rem;cursor:pointer;font-weight:600;">📷 QR</button>
+                    <select id="idioma-select" class="idioma-select">
+                        <option value="es">🇪🇸 Español</option>
+                        <option value="en">🇬🇧 English</option>
+                        <option value="pt">🇵🇹 Português</option>
+                        <option value="th">🇹🇭 ไทย</option>
+                    </select>
                     <span id="modo-badge" class="modo-badge">🟡 Conectando...</span>
                 </div>
             </div>
-            <h1>📚 Control de Asistencia</h1>
+            <h1 id="app-title">📚 Control de Asistencia</h1>
             <div class="fecha" id="fecha-display">Cargando...</div>
         </header>
         <div class="fecha-selector">
-            <label>📅 Fecha de asistencia</label>
+            <label id="label-fecha">📅 Fecha de asistencia</label>
             <div class="fecha-row">
                 <input type="date" id="fecha-input">
-                <button class="btn-hoy" onclick="irAHoy()">Hoy</button>
+                <button class="btn-hoy" id="btn-hoy" onclick="irAHoy()">Hoy</button>
             </div>
             <div class="solo-lectura" id="solo-lectura">👁️ Solo lectura</div>
         </div>
         <div class="filtros">
             <select id="grado"><option value="">Todos los grados</option></select>
             <select id="seccion"><option value="">Todas</option></select>
-            <button class="btn-cargar" onclick="cargar()">Cargar</button>
+            <button class="btn-cargar" id="btn-cargar" onclick="cargar()">Cargar</button>
         </div>
         <div class="busqueda-bar" id="busqueda-container" style="display:none;">
             <input type="text" id="busqueda-input" placeholder="🔍 Buscar alumno..." autocomplete="off">
             <button id="btn-todos-presentes" class="btn-todos-p">✅ Todos</button>
         </div>
         <div class="contador">
-            <div><span class="num presente" id="c-p">0</span><span class="label">Presentes</span></div>
-            <div><span class="num ausente" id="c-a">0</span><span class="label">Ausentes</span></div>
-            <div><span class="num tardanza" id="c-t">0</span><span class="label">Tardanzas</span></div>
-            <div><span class="num justificado" id="c-j">0</span><span class="label">Justificado</span></div>
-            <div><span class="num excursion" id="c-e">0</span><span class="label">Excursión</span></div>
-            <div><span class="num pendiente" id="c-pend">0</span><span class="label">Pendientes</span></div>
+            <div><span class="num presente" id="c-p">0</span><span class="label" id="label-p">Presentes</span></div>
+            <div><span class="num ausente" id="c-a">0</span><span class="label" id="label-a">Ausentes</span></div>
+            <div><span class="num tardanza" id="c-t">0</span><span class="label" id="label-t">Tardanzas</span></div>
+            <div><span class="num justificado" id="c-j">0</span><span class="label" id="label-j">Justificado</span></div>
+            <div><span class="num excursion" id="c-e">0</span><span class="label" id="label-e">Excursión</span></div>
+            <div><span class="num pendiente" id="c-pend">0</span><span class="label" id="label-pend">Pendientes</span></div>
         </div>
         <div class="lista" id="lista"><div class="loading">Seleccioná grado/sección y tocá "Cargar"</div></div>
         <div class="acciones">
             <button class="btn-guardar" id="btn-guardar" onclick="guardar()">💾 Guardar</button>
-            <button class="btn-stats" onclick="abrirReporte()">📊 Stats</button>
+            <button class="btn-stats" id="btn-stats" onclick="abrirReporte()">📊 Stats</button>
         </div>
         <div class="toast" id="toast"></div>
     </div>
@@ -300,7 +170,7 @@
     <div class="modal-overlay" id="modal-reporte">
         <div class="modal">
             <div class="modal-header">
-                <h2>📊 Reporte de Asistencia</h2>
+                <h2 id="modal-reporte-title">📊 Reporte de Asistencia</h2>
                 <button class="modal-close" onclick="cerrarModal('modal-reporte')">✕</button>
             </div>
             <div class="modal-body">
@@ -308,10 +178,10 @@
                     <input type="date" id="reporte-desde" placeholder="Desde">
                     <input type="date" id="reporte-hasta" placeholder="Hasta">
                 </div>
-                <button class="btn-modal" style="background: #667eea; color: white;" onclick="generarReporte()">Generar Reporte</button>
-                <button class="btn-modal btn-exportar-csv" onclick="exportarCSV()">📄 Descargar CSV</button>
-                <button class="btn-modal btn-exportar-pdf" onclick="exportarPDF()">📕 Descargar PDF</button>
-                <button class="btn-modal btn-exportar-excel" onclick="exportarExcel()">📗 Descargar Excel</button>
+                <button class="btn-modal" id="btn-generar-reporte" style="background: #667eea; color: white;" onclick="generarReporte()">Generar Reporte</button>
+                <button class="btn-modal btn-exportar-csv" id="btn-exportar-csv" onclick="exportarCSV()">📄 Descargar CSV</button>
+                <button class="btn-modal btn-exportar-pdf" id="btn-exportar-pdf" onclick="exportarPDF()">📕 Descargar PDF</button>
+                <button class="btn-modal btn-exportar-excel" id="btn-exportar-excel" onclick="exportarExcel()">📗 Descargar Excel</button>
                 <div id="reporte-contenido"></div>
             </div>
         </div>
@@ -345,17 +215,167 @@
         let alumnoJustificacionId = null;
         let reporteData = [];
         let justificacionExistente = null;
+        let justificacionesDelDia = {};
+        let currentLang = 'es';
 
-        const estados = {
-            P: { icon: '✅', label: 'Presente', cls: 'sel-p' },
-            A: { icon: '❌', label: 'Ausente', cls: 'sel-a' },
-            T: { icon: '⏰', label: 'Tardanza', cls: 'sel-t' },
-            J: { icon: '📝', label: 'Justificado', cls: 'sel-j' },
-            E: { icon: '🚌', label: 'Excursión', cls: 'sel-e' }
+        // ==================== TRADUCCIONES ====================
+        const translations = {
+            es: {
+                app_title: "📚 Control de Asistencia", label_fecha: "📅 Fecha de asistencia", btn_hoy: "Hoy",
+                solo_lectura: "👁️ Solo lectura", btn_cargar: "Cargar", busqueda_placeholder: "🔍 Buscar alumno...",
+                btn_todos: "✅ Todos", label_p: "Presentes", label_a: "Ausentes", label_t: "Tardanzas",
+                label_j: "Justificado", label_e: "Excursión", label_pend: "Pendientes", btn_guardar: "💾 Guardar",
+                btn_stats: "📊 Stats", modal_reporte_title: "📊 Reporte de Asistencia", btn_generar_reporte: "Generar Reporte",
+                btn_csv: "📄 Descargar CSV", btn_pdf: "📕 Descargar PDF", btn_excel: "📗 Descargar Excel",
+                modal_justificacion_title_new: "📝 Nueva Justificación", modal_justificacion_title_view: "👁️ Ver Justificación",
+                justificacion_placeholder: "Motivo de la justificación...", btn_adjuntar: "📷 Adjuntar foto",
+                btn_guardar_just: "Guardar Justificación", btn_cerrar_just: "✅ Cerrar",
+                estados: { P: "Presente", A: "Ausente", T: "Tardanza", J: "Justificado", E: "Excursión" },
+                loading_alumnos: "⏳ Cargando alumnos...", no_alumnos: "No hay alumnos",
+                sin_asistencia: "No hay asistencia para guardar", error_guardar: "Error: ",
+                exito_guardado: "✅ Guardado ({n} registros)", guardando: "⏳ Guardando...",
+                justificacion_sin_nota: "Agregá una nota o adjuntá una foto", justificacion_guardada: "✅ Justificación guardada",
+                error_justificacion: "Error guardando: ", qr_no_soportado: "El escaner QR solo funciona dentro de Telegram.",
+                qr_alumno_no_encontrado: "❌ Alumno no encontrado: ", qr_marcado: "✅ {nombre} marcado Presente",
+                stats_titulo: "📊 {fecha}\n\n✅ Presentes: {p}\n❌ Ausentes: {au}\n⏰ Tardanzas: {t}\n📝 Justificados: {j}\n🚌 Excursiones: {e}\n\nTotal: {total} alumnos",
+                futuro_no_permitido: "No se puede registrar asistencia futura", cargando_reporte: "⏳ Generando reporte...",
+                error_reporte: "Error al generar reporte", no_datos_periodo: "No hay datos en este período",
+                confirm_sobreescribir_todos: "Todos los alumnos ya tienen asistencia marcada ({n}). ¿Querés sobreescribir TODOS como Presente?",
+                confirm_marcar_pendientes: "Ya hay {m} alumnos marcados y {p} pendientes. ¿Marcar TODOS como Presente?",
+                online: "🟢 Online", offline: "🟡 Offline", sin_conexion: "🔴 Sin conexión",
+                todos_grados: "Todos los grados", todas_secciones: "Todas", seccion_prefix: "Sección "
+            },
+            en: {
+                app_title: "📚 Attendance Control", label_fecha: "📅 Attendance Date", btn_hoy: "Today",
+                solo_lectura: "👁️ Read only", btn_cargar: "Load", busqueda_placeholder: "🔍 Search student...",
+                btn_todos: "✅ All", label_p: "Present", label_a: "Absent", label_t: "Late",
+                label_j: "Excused", label_e: "Field Trip", label_pend: "Pending", btn_guardar: "💾 Save",
+                btn_stats: "📊 Stats", modal_reporte_title: "📊 Attendance Report", btn_generar_reporte: "Generate Report",
+                btn_csv: "📄 Download CSV", btn_pdf: "📕 Download PDF", btn_excel: "📗 Download Excel",
+                modal_justificacion_title_new: "📝 New Justification", modal_justificacion_title_view: "👁️ View Justification",
+                justificacion_placeholder: "Reason for justification...", btn_adjuntar: "📷 Attach photo",
+                btn_guardar_just: "Save Justification", btn_cerrar_just: "✅ Close",
+                estados: { P: "Present", A: "Absent", T: "Late", J: "Excused", E: "Field Trip" },
+                loading_alumnos: "⏳ Loading students...", no_alumnos: "No students",
+                sin_asistencia: "No attendance to save", error_guardar: "Error: ",
+                exito_guardado: "✅ Saved ({n} records)", guardando: "⏳ Saving...",
+                justificacion_sin_nota: "Add a note or attach a photo", justificacion_guardada: "✅ Justification saved",
+                error_justificacion: "Error saving: ", qr_no_soportado: "QR scanner only works inside Telegram.",
+                qr_alumno_no_encontrado: "❌ Student not found: ", qr_marcado: "✅ {nombre} marked Present",
+                stats_titulo: "📊 {fecha}\n\n✅ Present: {p}\n❌ Absent: {au}\n⏰ Late: {t}\n📝 Excused: {j}\n🚌 Field Trip: {e}\n\nTotal: {total} students",
+                futuro_no_permitido: "Cannot mark future attendance", cargando_reporte: "⏳ Generating report...",
+                error_reporte: "Error generating report", no_datos_periodo: "No data in this period",
+                confirm_sobreescribir_todos: "All students already have attendance marked ({n}). Overwrite ALL as Present?",
+                confirm_marcar_pendientes: "{m} students marked, {p} pending. Mark ALL as Present?",
+                online: "🟢 Online", offline: "🟡 Offline", sin_conexion: "🔴 No connection",
+                todos_grados: "All grades", todas_secciones: "All", seccion_prefix: "Section "
+            },
+            pt: {
+                app_title: "📚 Controle de Frequência", label_fecha: "📅 Data da frequência", btn_hoy: "Hoje",
+                solo_lectura: "👁️ Somente leitura", btn_cargar: "Carregar", busqueda_placeholder: "🔍 Buscar aluno...",
+                btn_todos: "✅ Todos", label_p: "Presentes", label_a: "Ausentes", label_t: "Atrasos",
+                label_j: "Justificado", label_e: "Excursão", label_pend: "Pendentes", btn_guardar: "💾 Salvar",
+                btn_stats: "📊 Estatísticas", modal_reporte_title: "📊 Relatório de Frequência", btn_generar_reporte: "Gerar Relatório",
+                btn_csv: "📄 Baixar CSV", btn_pdf: "📕 Baixar PDF", btn_excel: "📗 Baixar Excel",
+                modal_justificacion_title_new: "📝 Nova Justificativa", modal_justificacion_title_view: "👁️ Ver Justificativa",
+                justificacion_placeholder: "Motivo da justificativa...", btn_adjuntar: "📷 Anexar foto",
+                btn_guardar_just: "Salvar Justificativa", btn_cerrar_just: "✅ Fechar",
+                estados: { P: "Presente", A: "Ausente", T: "Atraso", J: "Justificado", E: "Excursão" },
+                loading_alumnos: "⏳ Carregando alunos...", no_alumnos: "Nenhum aluno",
+                sin_asistencia: "Nenhuma frequência para salvar", error_guardar: "Erro: ",
+                exito_guardado: "✅ Salvo ({n} registros)", guardando: "⏳ Salvando...",
+                justificacion_sin_nota: "Adicione uma nota ou anexe uma foto", justificacion_guardada: "✅ Justificativa salva",
+                error_justificacion: "Erro ao salvar: ", qr_no_soportado: "O scanner QR só funciona dentro do Telegram.",
+                qr_alumno_no_encontrado: "❌ Aluno não encontrado: ", qr_marcado: "✅ {nombre} marcado Presente",
+                stats_titulo: "📊 {fecha}\n\n✅ Presentes: {p}\n❌ Ausentes: {au}\n⏰ Atrasos: {t}\n📝 Justificados: {j}\n🚌 Excursões: {e}\n\nTotal: {total} alunos",
+                futuro_no_permitido: "Não é possível marcar frequência futura", cargando_reporte: "⏳ Gerando relatório...",
+                error_reporte: "Erro ao gerar relatório", no_datos_periodo: "Sem dados neste período",
+                confirm_sobreescribir_todos: "Todos os alunos já têm frequência ({n}). Sobrescrever TODOS como Presente?",
+                confirm_marcar_pendientes: "{m} alunos marcados, {p} pendentes. Marcar TODOS como Presente?",
+                online: "🟢 Online", offline: "🟡 Offline", sin_conexion: "🔴 Sem conexão",
+                todos_grados: "Todas as séries", todas_secciones: "Todas", seccion_prefix: "Turma "
+            },
+            th: {
+                app_title: "📚 บันทึกการเข้าเรียน", label_fecha: "📅 วันที่เข้าเรียน", btn_hoy: "วันนี้",
+                solo_lectura: "👁️ อ่านอย่างเดียว", btn_cargar: "โหลด", busqueda_placeholder: "🔍 ค้นหานักเรียน...",
+                btn_todos: "✅ ทั้งหมด", label_p: "มาเรียน", label_a: "ขาดเรียน", label_t: "มาสาย",
+                label_j: "ขาดเรียนมีเหตุผล", label_e: "ไปทัศนศึกษานอกสถานที่", label_pend: "รอระบุ",
+                btn_guardar: "💾 บันทึก", btn_stats: "📊 สถิติ", modal_reporte_title: "📊 รายงานการเข้าเรียน",
+                btn_generar_reporte: "สร้างรายงาน", btn_csv: "📄 ดาวน์โหลด CSV", btn_pdf: "📕 ดาวน์โหลด PDF", btn_excel: "📗 ดาวน์โหลด Excel",
+                modal_justificacion_title_new: "📝 หนังสืออนุญาตใหม่", modal_justificacion_title_view: "👁️ ดูหนังสืออนุญาต",
+                justificacion_placeholder: "เหตุผล...", btn_adjuntar: "📷 แนบรูปภาพ",
+                btn_guardar_just: "บันทึกหนังสืออนุญาต", btn_cerrar_just: "✅ ปิด",
+                estados: { P: "มาเรียน", A: "ขาดเรียน", T: "มาสาย", J: "ขาดเรียนมีเหตุผล", E: "ไปทัศนศึกษานอกสถานที่" },
+                loading_alumnos: "⏳ กำลังโหลดนักเรียน...", no_alumnos: "ไม่มีนักเรียน",
+                sin_asistencia: "ไม่มีข้อมูลการเข้าเรียนที่จะบันทึก", error_guardar: "ข้อผิดพลาด: ",
+                exito_guardado: "✅ บันทึกแล้ว ({n} รายการ)", guardando: "⏳ กำลังบันทึก...",
+                justificacion_sin_nota: "เพิ่มหมายเหตุหรือแนบรูปภาพ", justificacion_guardada: "✅ บันทึกหนังสืออนุญาตแล้ว",
+                error_justificacion: "ข้อผิดพลาดในการบันทึก: ", qr_no_soportado: "สแกน QR ใช้งานได้เฉพาะใน Telegram",
+                qr_alumno_no_encontrado: "❌ ไม่พบนักเรียน: ", qr_marcado: "✅ {nombre} ทำเครื่องหมายว่ามาเรียน",
+                stats_titulo: "📊 {fecha}\n\n✅ มาเรียน: {p}\n❌ ขาดเรียน: {au}\n⏰ มาสาย: {t}\n📝 ขาดเรียนมีเหตุผล: {j}\n🚌 ไปทัศนศึกษานอกสถานที่: {e}\n\nรวม: {total} คน",
+                futuro_no_permitido: "ไม่สามารถบันทึกการเข้าเรียนล่วงหน้าได้", cargando_reporte: "⏳ กำลังสร้างรายงาน...",
+                error_reporte: "เกิดข้อผิดพลาดในการสร้างรายงาน", no_datos_periodo: "ไม่มีข้อมูลในช่วงเวลานี้",
+                confirm_sobreescribir_todos: "นักเรียนทุกคนถูกบันทึกแล้ว ({n}). เขียนทับทั้งหมดเป็น 'มาเรียน'?",
+                confirm_marcar_pendientes: "มีนักเรียน {m} คนถูกบันทึก {p} คนรอ เขียนทับทั้งหมด?",
+                online: "🟢 ออนไลน์", offline: "🟡 ออฟไลน์", sin_conexion: "🔴 ไม่มีการเชื่อมต่อ",
+                todos_grados: "ทุกระดับชั้น", todas_secciones: "ทั้งหมด", seccion_prefix: "ห้อง "
+            }
         };
+
+        function t(key, vars = {}) {
+            let text = translations[currentLang]?.[key] || translations['es'][key] || key;
+            for (let [k, v] of Object.entries(vars)) text = text.replace(`{${k}}`, v);
+            return text;
+        }
+
+        function getEstadoLabel(cod) { return t(`estados.${cod}`); }
+
+        function applyTranslations() {
+            document.getElementById('app-title').textContent = t('app_title');
+            document.getElementById('label-fecha').textContent = t('label_fecha');
+            document.getElementById('btn-hoy').textContent = t('btn_hoy');
+            document.getElementById('btn-cargar').textContent = t('btn_cargar');
+            document.getElementById('busqueda-input').placeholder = t('busqueda_placeholder');
+            document.getElementById('btn-todos-presentes').innerHTML = t('btn_todos');
+            document.getElementById('label-p').textContent = t('label_p');
+            document.getElementById('label-a').textContent = t('label_a');
+            document.getElementById('label-t').textContent = t('label_t');
+            document.getElementById('label-j').textContent = t('label_j');
+            document.getElementById('label-e').textContent = t('label_e');
+            document.getElementById('label-pend').textContent = t('label_pend');
+            document.getElementById('btn-guardar').innerHTML = t('btn_guardar');
+            document.getElementById('btn-stats').innerHTML = t('btn_stats');
+            document.getElementById('modal-reporte-title').textContent = t('modal_reporte_title');
+            document.getElementById('btn-generar-reporte').textContent = t('btn_generar_reporte');
+            document.getElementById('btn-exportar-csv').innerHTML = t('btn_csv');
+            document.getElementById('btn-exportar-pdf').innerHTML = t('btn_pdf');
+            document.getElementById('btn-exportar-excel').innerHTML = t('btn_excel');
+            document.getElementById('justificacion-nota').placeholder = t('justificacion_placeholder');
+            document.getElementById('btn-adjuntar-foto').innerHTML = t('btn_adjuntar');
+            if (justificacionExistente) document.getElementById('btn-guardar-justificacion').textContent = t('btn_cerrar_just');
+            else document.getElementById('btn-guardar-justificacion').textContent = t('btn_guardar_just');
+            const soloLectura = document.getElementById('solo-lectura');
+            if (soloLectura.style.display === 'block') soloLectura.textContent = t('solo_lectura');
+            const gradoSelect = document.getElementById('grado');
+            const seccionSelect = document.getElementById('seccion');
+            if (gradoSelect.options[0]) gradoSelect.options[0].text = t('todos_grados');
+            if (seccionSelect.options[0]) seccionSelect.options[0].text = t('todas_secciones');
+            for (let i = 1; i < seccionSelect.options.length; i++) {
+                let val = seccionSelect.options[i].value;
+                if (val) seccionSelect.options[i].text = t('seccion_prefix') + val;
+            }
+            if (alumnos.length > 0) renderizar();
+        }
+
+        function setLanguage(lang) { currentLang = lang; localStorage.setItem('app_lang', lang); applyTranslations(); }
 
         function init() {
             console.log('🚀 Iniciando Mini App...');
+            const savedLang = localStorage.getItem('app_lang');
+            if (savedLang && translations[savedLang]) currentLang = savedLang;
+            document.getElementById('idioma-select').value = currentLang;
+            document.getElementById('idioma-select').addEventListener('change', (e) => setLanguage(e.target.value));
+            applyTranslations();
             tg.ready();
             tg.expand();
             actualizarHora();
@@ -363,153 +383,75 @@
             const inputFecha = document.getElementById('fecha-input');
             if (inputFecha) {
                 inputFecha.value = fechaSel;
-                inputFecha.addEventListener('change', function(e) {
-                    fechaSel = e.target.value;
-                    actualizarFecha();
-                    cargar();
-                });
+                inputFecha.addEventListener('change', function(e) { fechaSel = e.target.value; actualizarFecha(); cargar(); });
             }
             actualizarFecha();
-
             const busquedaInput = document.getElementById('busqueda-input');
-            if (busquedaInput) {
-                busquedaInput.addEventListener('input', filtrarBusqueda);
-            }
-
+            if (busquedaInput) busquedaInput.addEventListener('input', filtrarBusqueda);
             const btnTodosP = document.getElementById('btn-todos-presentes');
             if (btnTodosP) {
-                btnTodosP.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    marcarTodosPresentes();
-                });
-                btnTodosP.addEventListener('touchend', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    marcarTodosPresentes();
-                }, {passive: false});
+                btnTodosP.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); marcarTodosPresentes(); });
+                btnTodosP.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); marcarTodosPresentes(); }, {passive: false});
             }
-
-            auth().then(() => {
-                verificarConexion();
-                cargarFiltros();
-            }).catch(err => {
-                console.error('Error init:', err);
-                verificarConexion();
-                cargarFiltros();
-            });
+            auth().then(() => { verificarConexion(); cargarFiltros(); }).catch(() => { verificarConexion(); cargarFiltros(); });
         }
 
-        function actualizarHora() {
-            const el = document.getElementById('hora');
-            if (el) el.textContent = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'});
-        }
+        function actualizarHora() { document.getElementById('hora').textContent = new Date().toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'}); }
 
         async function auth() {
             try {
-                console.log('🔑 Autenticando...');
                 const initData = tg.initData || '';
-
-                if (!initData) {
-                    console.warn('⚠️ No initData, modo desarrollo');
-                    user = {id: 0, first_name: 'Modo Dev', username: 'dev'};
-                    return;
-                }
-
-                const r = await fetch(`${API}/auth`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({initData: initData})
-                });
+                if (!initData) { user = {id: 0, first_name: 'Modo Dev', username: 'dev'}; return; }
+                const r = await fetch(`${API}/auth`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({initData: initData}) });
                 const d = await r.json();
-
-                if (d.success) {
-                    user = d.user;
-                    console.log('✅ Autenticado:', user.first_name);
-                } else {
-                    console.warn('⚠️ Auth fallida:', d.message);
-                    user = {id: 0, first_name: 'Modo Dev', username: 'dev'};
-                }
-            } catch (e) {
-                console.error('❌ Auth error:', e);
-                user = {id: 0, first_name: 'Modo Dev', username: 'dev'};
-            }
+                user = d.success ? d.user : {id: 0, first_name: 'Modo Dev', username: 'dev'};
+            } catch (e) { user = {id: 0, first_name: 'Modo Dev', username: 'dev'}; }
         }
 
         async function verificarConexion() {
             try {
-                const r = await fetch(`${API}/`, {method: 'GET'});
+                const r = await fetch(`${API}/`);
                 const d = await r.json();
                 const badge = document.getElementById('modo-badge');
-                if (badge) {
-                    if (d.status === 'ok' || d.modo === 'online') {
-                        badge.textContent = '🟢 Online';
-                    } else {
-                        badge.textContent = '🟡 Offline';
-                    }
-                }
-                console.log('📡 Estado:', d);
-            } catch (e) {
-                console.error('❌ Sin conexión:', e);
-                const badge = document.getElementById('modo-badge');
-                if (badge) badge.textContent = '🔴 Sin conexión';
-            }
+                if (badge) badge.textContent = (d.status === 'ok' || d.modo === 'online') ? t('online') : t('offline');
+            } catch (e) { document.getElementById('modo-badge').textContent = t('sin_conexion'); }
         }
 
         function actualizarFecha() {
             const f = new Date(fechaSel + 'T00:00:00');
-            const display = document.getElementById('fecha-display');
-            if (display) display.textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-
+            document.getElementById('fecha-display').textContent = f.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
             const hoyStr = new Date().toISOString().split('T')[0];
-
             const badge = document.getElementById('solo-lectura');
             const btn = document.getElementById('btn-guardar');
-            if (!badge || !btn) return;
-            if (fechaSel === hoyStr) {
-                badge.style.display = 'none'; btn.disabled = false; btn.textContent = '💾 Guardar';
-            } else if (fechaSel < hoyStr) {
-                badge.style.display = 'block'; badge.textContent = '👁️ Cargando asistencia histórica';
-                btn.disabled = false; btn.textContent = '💾 Cargar atrasado';
-            } else {
-                badge.style.display = 'block'; badge.textContent = '🔒 No se puede registrar asistencia futura';
-                btn.disabled = true; btn.textContent = '🔒 Bloqueado';
-            }
+            if (fechaSel === hoyStr) { badge.style.display = 'none'; btn.disabled = false; btn.innerHTML = t('btn_guardar'); }
+            else if (fechaSel < hoyStr) { badge.style.display = 'block'; badge.textContent = t('solo_lectura'); btn.disabled = false; btn.innerHTML = t('btn_guardar'); }
+            else { badge.style.display = 'block'; badge.textContent = t('futuro_no_permitido'); btn.disabled = true; btn.innerHTML = '🔒 ' + t('futuro_no_permitido'); }
         }
 
-        function irAHoy() {
-            fechaSel = new Date().toISOString().split('T')[0];
-            const input = document.getElementById('fecha-input');
-            if (input) input.value = fechaSel;
-            actualizarFecha();
-            cargar();
-        }
+        function irAHoy() { fechaSel = new Date().toISOString().split('T')[0]; document.getElementById('fecha-input').value = fechaSel; actualizarFecha(); cargar(); }
 
         async function cargarFiltros() {
             try {
-                console.log('📥 Cargando filtros...');
                 const r = await fetch(`${API}/alumnos`);
                 const data = await r.json();
                 const grados = [...new Set(data.map(a => a.grado))].sort();
                 const secciones = [...new Set(data.map(a => a.seccion))].sort();
                 const sg = document.getElementById('grado');
                 const ss = document.getElementById('seccion');
-                if (sg) grados.forEach(g => sg.add(new Option(g, g)));
-                if (ss) secciones.forEach(s => ss.add(new Option('Sección ' + s, s)));
-                console.log('✅ Filtros cargados');
-            } catch (e) { console.error('❌ Error filtros:', e); }
+                sg.innerHTML = `<option value="">${t('todos_grados')}</option>`;
+                ss.innerHTML = `<option value="">${t('todas_secciones')}</option>`;
+                grados.forEach(g => sg.add(new Option(g, g)));
+                secciones.forEach(s => ss.add(new Option(t('seccion_prefix') + s, s)));
+            } catch (e) { console.error('Error filtros:', e); }
         }
 
         async function cargar() {
             const g = document.getElementById('grado')?.value || '';
             const s = document.getElementById('seccion')?.value || '';
             const lista = document.getElementById('lista');
-            lista.innerHTML = '<div class="loading">⏳ Cargando alumnos...</div>';
-
-            const busquedaContainer = document.getElementById('busqueda-container');
-            if (busquedaContainer) busquedaContainer.style.display = 'flex';
+            lista.innerHTML = `<div class="loading">${t('loading_alumnos')}</div>`;
+            document.getElementById('busqueda-container').style.display = 'flex';
             try {
-                console.log('📥 Cargando alumnos...');
                 const params = new URLSearchParams();
                 if (g) params.append('grado', g);
                 if (s) params.append('seccion', s);
@@ -520,95 +462,70 @@
                 if (s) ap.append('seccion', s);
                 const asis = await (await fetch(`${API}/asistencia/hoy?${ap}`)).json();
                 const asisMap = {};
-                (asis.asistencia || []).forEach(a => { asisMap[a.alumno_id || a.id] = a.estado; });
-                alumnos = al.map(a => ({...a, estado: asisMap[a.id] || null}));
+                (asis.asistencia || []).forEach(a => { asisMap[String(a.alumno_id)] = a.estado; });
+                const jp = new URLSearchParams();
+                jp.append('fecha', fechaSel);
+                const justs = await (await fetch(`${API}/asistencia/justificacion?${jp}`)).json();
+                justificacionesDelDia = {};
+                (justs || []).forEach(j => { justificacionesDelDia[String(j.alumno_id)] = j; });
+                alumnos = al.map(a => ({...a, estado: asisMap[String(a.id)] || null}));
                 renderizar();
                 contar();
-                console.log('✅ Alumnos cargados:', alumnos.length);
-            } catch (e) {
-                console.error('❌ Error cargando:', e);
-                mostrarError('Error: ' + e.message);
-            }
+            } catch (e) { mostrarError('Error: ' + e.message); }
         }
 
         function renderizar() {
             const container = document.getElementById('lista');
             if (!container) return;
-            if (alumnos.length === 0) {
-                container.innerHTML = '<div class="loading">No hay alumnos</div>';
-                return;
-            }
+            if (alumnos.length === 0) { container.innerHTML = `<div class="loading">${t('no_alumnos')}</div>`; return; }
             container.innerHTML = '';
             alumnos.forEach((a, i) => {
                 const ini = (a.nombre[0] + (a.apellido_paterno || a.apellido || '')[0]).toUpperCase();
                 const card = document.createElement('div');
                 card.className = 'card' + (a.estado ? ' completo' : '');
                 card.style.animationDelay = (i * 0.03) + 's';
-
                 const header = document.createElement('div');
                 header.className = 'card-header';
                 header.innerHTML = `<div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div><div class="foto">${ini}</div>`;
-
                 const estadosDiv = document.createElement('div');
                 estadosDiv.className = 'estados';
-
                 ['P','A','T','J','E'].forEach(cod => {
                     const btn = document.createElement('button');
-                    btn.innerHTML = `<span>${estados[cod].icon}</span><small>${estados[cod].label}</small>`;
-                    btn.className = a.estado === cod ? estados[cod].cls : '';
-
-                    const hoyStr = new Date().toISOString().split('T')[0];
-                    if (fechaSel > hoyStr) btn.disabled = true;
-
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        marcar(a.id, cod, this);
-                    });
-
-                    btn.addEventListener('touchend', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        marcar(a.id, cod, this);
-                    }, {passive: false});
-
+                    const icon = cod === 'P' ? '✅' : cod === 'A' ? '❌' : cod === 'T' ? '⏰' : cod === 'J' ? '📝' : '🚌';
+                    btn.innerHTML = `<span>${icon}</span><small>${getEstadoLabel(cod)}</small>`;
+                    btn.className = a.estado === cod ? (cod === 'P' ? 'sel-p' : cod === 'A' ? 'sel-a' : cod === 'T' ? 'sel-t' : cod === 'J' ? 'sel-j' : 'sel-e') : '';
+                    if (fechaSel > new Date().toISOString().split('T')[0]) btn.disabled = true;
+                    btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); marcar(a.id, cod, btn); });
+                    btn.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); marcar(a.id, cod, btn); }, {passive: false});
                     estadosDiv.appendChild(btn);
                 });
-
                 const btnJust = document.createElement('button');
                 btnJust.className = 'btn-adjuntar';
-                btnJust.textContent = '📷 Justificación';
+                const tieneJust = justificacionesDelDia[String(a.id)];
+                btnJust.textContent = tieneJust ? '👁️ ' + t('btn_cerrar_just') : '📷 ' + t('btn_adjuntar');
                 btnJust.style.marginTop = '8px';
                 btnJust.style.width = '100%';
-                btnJust.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    abrirJustificacion(a.id);
-                });
-
+                btnJust.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); abrirJustificacion(a.id); });
                 const justDiv = document.createElement('div');
                 justDiv.style.marginTop = '6px';
                 justDiv.appendChild(btnJust);
                 card.appendChild(justDiv);
-
                 card.appendChild(header);
                 card.appendChild(estadosDiv);
                 container.appendChild(card);
             });
-
             const busquedaTexto = document.getElementById('busqueda-input')?.value || '';
             if (busquedaTexto) filtrarBusqueda();
         }
 
         function marcar(id, estado, btn) {
-            console.log('📱 marcar(', id, estado, ')');
             const a = alumnos.find(x => x.id === id);
             if (!a) return;
             a.estado = estado;
             const card = btn.closest('.card');
             if (card) {
                 card.querySelectorAll('.estados button').forEach(b => b.className = '');
-                btn.classList.add(estados[estado].cls);
+                btn.classList.add(estado === 'P' ? 'sel-p' : estado === 'A' ? 'sel-a' : estado === 'T' ? 'sel-t' : estado === 'J' ? 'sel-j' : 'sel-e');
                 card.classList.add('completo');
             }
             contar();
@@ -622,47 +539,33 @@
             const j = alumnos.filter(a => a.estado === 'J').length;
             const e = alumnos.filter(a => a.estado === 'E').length;
             const pend = alumnos.filter(a => !a.estado).length;
-            const ids = ['c-p','c-a','c-t','c-j','c-e','c-pend'];
-            const vals = [p, au, t, j, e, pend];
-            ids.forEach((id, idx) => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = vals[idx];
-            });
+            document.getElementById('c-p').textContent = p;
+            document.getElementById('c-a').textContent = au;
+            document.getElementById('c-t').textContent = t;
+            document.getElementById('c-j').textContent = j;
+            document.getElementById('c-e').textContent = e;
+            document.getElementById('c-pend').textContent = pend;
         }
 
         async function guardar() {
             const regs = alumnos.filter(a => a.estado).map(a => ({
-                alumno_id: a.id, fecha: fechaSel, estado: a.estado,
+                alumno_id: String(a.id), fecha: fechaSel, estado: a.estado,
                 hora: new Date().toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'}),
                 user_id: user?.id || 0
             }));
-            if (!regs.length) { tg.showAlert('No hay asistencia para guardar'); return; }
+            if (!regs.length) { tg.showAlert(t('sin_asistencia')); return; }
             const btn = document.getElementById('btn-guardar');
-            const orig = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '⏳ Guardando...';
+            const orig = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = t('guardando');
             try {
-                const r = await fetch(`${API}/asistencia/registrar`, {
-                    method: 'POST', headers: {'Content-Type':'application/json'},
-                    body: JSON.stringify({registros: regs, user_id: user?.id || 0})
-                });
+                const r = await fetch(`${API}/asistencia/registrar`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({registros: regs, user_id: user?.id || 0}) });
                 const d = await r.json();
                 const toast = document.getElementById('toast');
-                if (toast) {
-                    toast.textContent = d.modo === 'online' ? `✅ Guardado (${d.registros} registros)` : `💾 ${d.mensaje||'Guardado'}`;
-                    toast.style.background = d.modo === 'online' ? '#1a1a1a' : '#ff9800';
-                    toast.classList.add('show');
-                    setTimeout(() => toast.classList.remove('show'), 3000);
-                }
-                console.log('✅ Guardado:', d);
-            } catch (e) {
-                console.error('❌ Error guardando:', e);
-                tg.showAlert('Error: ' + e.message);
-            } finally {
-                const btn = document.getElementById('btn-guardar');
-                btn.disabled = false;
-                btn.textContent = orig;
-            }
+                if (toast) { toast.textContent = d.modo === 'online' ? t('exito_guardado', {n: d.registros}) : `💾 ${d.mensaje||'Guardado'}`; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 3000); }
+                if (d.success) setTimeout(() => cargar(), 500);
+                else tg.showAlert(t('error_guardar') + (d.detail || ''));
+            } catch (e) { tg.showAlert(t('error_guardar') + e.message); }
+            finally { btn.disabled = false; btn.innerHTML = orig; }
         }
 
         function stats() {
@@ -673,105 +576,47 @@
             const e = alumnos.filter(a => a.estado === 'E').length;
             const total = alumnos.length;
             const ft = document.getElementById('fecha-display')?.textContent || fechaSel;
-            tg.showAlert(`📊 ${ft}\n\n✅ Presentes: ${p}\n❌ Ausentes: ${au}\n⏰ Tardanzas: ${t}\n📝 Justificados: ${j}\n🚌 Excursiones: ${e}\n\nTotal: ${total} alumnos`);
+            tg.showAlert(t('stats_titulo', {fecha: ft, p, au, t, j, e, total}));
         }
 
-        function mostrarError(msg) {
-            const lista = document.getElementById('lista');
-            if (lista) lista.innerHTML = `<div class="error">${msg}</div>`;
-        }
+        function mostrarError(msg) { document.getElementById('lista').innerHTML = `<div class="error">${msg}</div>`; }
 
         function filtrarBusqueda() {
             const texto = document.getElementById('busqueda-input').value.toLowerCase().trim();
-            const cards = document.querySelectorAll('.card');
-
-            cards.forEach(card => {
+            document.querySelectorAll('.card').forEach(card => {
                 const nombre = card.querySelector('h3')?.textContent.toLowerCase() || '';
                 const matricula = card.querySelector('span')?.textContent.toLowerCase() || '';
-
-                if (texto === '' || nombre.includes(texto) || matricula.includes(texto)) {
-                    card.style.display = '';
-                    card.classList.remove('destacado');
-                } else {
-                    card.style.display = 'none';
-                }
+                card.style.display = (texto === '' || nombre.includes(texto) || matricula.includes(texto)) ? '' : 'none';
+                card.classList.remove('destacado');
             });
-
             if (texto.length > 0) {
                 const visibles = document.querySelectorAll('.card:not([style*="none"])');
-                if (visibles.length === 1) {
-                    visibles[0].classList.add('destacado');
-                }
+                if (visibles.length === 1) visibles[0].classList.add('destacado');
             }
         }
 
         let marcandoTodos = false;
-
         function marcarTodosPresentes() {
             if (marcandoTodos) return;
             marcandoTodos = true;
-
             const hoyStr = new Date().toISOString().split('T')[0];
-
-            if (fechaSel > hoyStr) {
-                tg.showAlert('No se puede marcar asistencia futura');
-                marcandoTodos = false;
-                return;
-            }
-
+            if (fechaSel > hoyStr) { tg.showAlert(t('futuro_no_permitido')); marcandoTodos = false; return; }
             const yaMarcados = alumnos.filter(a => a.estado).length;
             const pendientes = alumnos.filter(a => !a.estado).length;
-
             if (yaMarcados > 0 && pendientes === 0) {
-                tg.showConfirm(
-                    'Todos los alumnos ya tienen asistencia marcada (' + yaMarcados + '). ¿Querés sobreescribir TODOS como Presente?',
-                    function(confirmado) {
-                        if (confirmado) {
-                            ejecutarMarcarTodosPresentes(true);
-                        } else {
-                            marcandoTodos = false;
-                        }
-                    }
-                );
+                tg.showConfirm(t('confirm_sobreescribir_todos', {n: yaMarcados}), (confirmado) => { if (confirmado) ejecutarMarcarTodosPresentes(true); else marcandoTodos = false; });
             } else if (yaMarcados > 0 && pendientes > 0) {
-                tg.showConfirm(
-                    'Ya hay ' + yaMarcados + ' alumnos marcados y ' + pendientes + ' pendientes. ¿Marcar TODOS como Presente (sobreescribiendo los ya marcados)?',
-                    function(confirmado) {
-                        if (confirmado) {
-                            ejecutarMarcarTodosPresentes(true);
-                        } else {
-                            ejecutarMarcarTodosPresentes(false);
-                        }
-                    }
-                );
-            } else {
-                ejecutarMarcarTodosPresentes(false);
-            }
+                tg.showConfirm(t('confirm_marcar_pendientes', {m: yaMarcados, p: pendientes}), (confirmado) => { if (confirmado) ejecutarMarcarTodosPresentes(true); else ejecutarMarcarTodosPresentes(false); });
+            } else ejecutarMarcarTodosPresentes(false);
         }
 
         function ejecutarMarcarTodosPresentes(forzarSobreescribir) {
             let marcados = 0;
-
-            alumnos.forEach(a => {
-                if (forzarSobreescribir || !a.estado) {
-                    a.estado = 'P';
-                    marcados++;
-                }
-            });
-
-            renderizar();
-            contar();
-
+            alumnos.forEach(a => { if (forzarSobreescribir || !a.estado) { a.estado = 'P'; marcados++; } });
+            renderizar(); contar();
             const toast = document.getElementById('toast');
-            if (toast) {
-                toast.textContent = '✅ ' + marcados + ' alumnos marcados presentes';
-                toast.style.background = '#4caf50';
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
-            }
-
+            if (toast) { toast.textContent = `✅ ${marcados} ${t('label_p')}`; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2000); }
             if (navigator.vibrate) navigator.vibrate(20);
-
             setTimeout(() => { marcandoTodos = false; }, 500);
         }
 
@@ -785,27 +630,17 @@
 
         function cerrarModal(id) {
             document.getElementById(id).classList.remove('show');
-            
             if (id === 'modal-justificacion') {
                 setTimeout(() => {
-                    const notaInput = document.getElementById('justificacion-nota');
-                    notaInput.readOnly = false;
-                    notaInput.style.background = 'white';
-                    notaInput.value = '';
-                    
+                    document.getElementById('justificacion-nota').readOnly = false;
+                    document.getElementById('justificacion-nota').style.background = 'white';
+                    document.getElementById('justificacion-nota').value = '';
                     document.getElementById('justificacion-preview').innerHTML = '';
                     document.getElementById('justificacion-info').style.display = 'none';
-                    document.getElementById('justificacion-info').innerHTML = '';
-                    
-                    const btnAdjuntar = document.getElementById('btn-adjuntar-foto');
-                    btnAdjuntar.style.display = 'inline-block';
-                    
-                    const btnGuardar = document.getElementById('btn-guardar-justificacion');
-                    btnGuardar.textContent = 'Guardar Justificación';
-                    btnGuardar.onclick = guardarJustificacion;
-                    
-                    document.getElementById('modal-justificacion-titulo').textContent = '📝 Justificación';
-                    
+                    document.getElementById('btn-adjuntar-foto').style.display = 'inline-block';
+                    document.getElementById('btn-guardar-justificacion').textContent = t('btn_guardar_just');
+                    document.getElementById('btn-guardar-justificacion').onclick = guardarJustificacion;
+                    document.getElementById('modal-justificacion-titulo').textContent = t('modal_justificacion_title_new');
                     justificacionExistente = null;
                 }, 300);
             }
@@ -814,344 +649,72 @@
         async function generarReporte() {
             const desde = document.getElementById('reporte-desde').value;
             const hasta = document.getElementById('reporte-hasta').value;
-
-            if (!desde || !hasta) {
-                tg.showAlert('Seleccioná fechas desde y hasta');
-                return;
-            }
-
+            if (!desde || !hasta) { tg.showAlert('Seleccioná fechas desde y hasta'); return; }
             const g = document.getElementById('grado')?.value || '';
             const s = document.getElementById('seccion')?.value || '';
-
             try {
-                document.getElementById('reporte-contenido').innerHTML = '<div class="loading">⏳ Generando reporte...</div>';
-
+                document.getElementById('reporte-contenido').innerHTML = `<div class="loading">${t('cargando_reporte')}</div>`;
                 const params = new URLSearchParams();
-                params.append('desde', desde);
-                params.append('hasta', hasta);
-                if (g) params.append('grado', g);
-                if (s) params.append('seccion', s);
-
+                params.append('desde', desde); params.append('hasta', hasta);
+                if (g) params.append('grado', g); if (s) params.append('seccion', s);
                 const r = await fetch(`${API}/asistencia/reporte?${params}`);
                 const data = await r.json();
                 reporteData = data;
-
                 mostrarReporte(data);
-            } catch (e) {
-                document.getElementById('reporte-contenido').innerHTML = '<div class="error">Error: ' + e.message + '</div>';
-            }
+            } catch (e) { document.getElementById('reporte-contenido').innerHTML = `<div class="error">${t('error_reporte')}: ${e.message}</div>`; }
         }
 
         function mostrarReporte(data) {
-            if (!data || !data.length) {
-                document.getElementById('reporte-contenido').innerHTML = '<div class="loading">No hay datos en este período</div>';
-                return;
-            }
-
-            let html = '<table class="reporte-tabla"><thead><tr>';
-            html += '<th>Alumno</th><th>P</th><th>A</th><th>T</th><th>J</th><th>E</th><th>%P</th>';
-            html += '</tr></thead><tbody>';
-
+            if (!data || !data.length) { document.getElementById('reporte-contenido').innerHTML = `<div class="loading">${t('no_datos_periodo')}</div>`; return; }
+            let html = '<table class="reporte-tabla"><thead><tr><th>Alumno</th><th>P</th><th>A</th><th>T</th><th>J</th><th>E</th><th>%P</th><tr></thead><tbody>';
             data.forEach(row => {
                 const total = row.P + row.A + row.T + row.J + row.E;
                 const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
                 html += `<tr>
                     <td><strong>${row.nombre}</strong><br><small>${row.matricula}</small></td>
-                    <td style="color:#4caf50">${row.P}</td>
-                    <td style="color:#f44336">${row.A}</td>
-                    <td style="color:#ff9800">${row.T}</td>
-                    <td style="color:#2196f3">${row.J}</td>
+                    <td style="color:#4caf50">${row.P}</td><td style="color:#f44336">${row.A}</td>
+                    <td style="color:#ff9800">${row.T}</td><td style="color:#2196f3">${row.J}</td>
                     <td style="color:#9c27b0">${row.E}</td>
                     <td><strong>${porcentaje}%</strong>
-                        <div class="estadistica-bar">
-                            <div class="est-p" style="width:${row.P/total*100}%"></div>
-                            <div class="est-a" style="width:${row.A/total*100}%"></div>
-                            <div class="est-t" style="width:${row.T/total*100}%"></div>
-                            <div class="est-j" style="width:${row.J/total*100}%"></div>
-                            <div class="est-e" style="width:${row.E/total*100}%"></div>
-                        </div>
+                        <div class="estadistica-bar"><div class="est-p" style="width:${row.P/total*100}%"></div>
+                        <div class="est-a" style="width:${row.A/total*100}%"></div><div class="est-t" style="width:${row.T/total*100}%"></div>
+                        <div class="est-j" style="width:${row.J/total*100}%"></div><div class="est-e" style="width:${row.E/total*100}%"></div></div>
                     </td>
                 </tr>`;
             });
-
             html += '</tbody></table>';
             document.getElementById('reporte-contenido').innerHTML = html;
         }
 
-        // ==================== 📄 EXPORTAR CSV ====================
-        function exportarCSV() {
-            if (!reporteData || !reporteData.length) {
-                tg.showAlert('Primero generá el reporte');
-                return;
-            }
+        // ==================== FUNCIÓN DE DESCARGA DEFINITIVA (funciona en todas las plataformas) ====================
+                async function descargarArchivoTelegram(blob, nombreArchivo, mimeType) {
+            const isTelegramWebView = !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
 
-            const desde = document.getElementById('reporte-desde').value;
-            const hasta = document.getElementById('reporte-hasta').value;
+            // Estrategia 0: Subir a backend y abrir URL publica (funciona en Telegram WebView, Android, iOS, Desktop)
+            if (isTelegramWebView) {
+                try {
+                    const formData = new FormData();
+                    formData.append('archivo', blob, nombreArchivo);
 
-            let csv = 'Alumno,Matricula,Grado,Seccion,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,%Asistencia\n';
+                    const r = await fetch(`${API}/upload-temp`, {
+                        method: 'POST',
+                        body: formData
+                    });
 
-            reporteData.forEach(row => {
-                const total = row.P + row.A + row.T + row.J + row.E;
-                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
-                csv += `"${row.nombre}",${row.matricula},${row.grado},${row.seccion},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias},${porcentaje}%\n`;
-            });
-
-            descargarArchivo(csv, `reporte_asistencia_${desde}_al_${hasta}.csv`, 'text/csv;charset=utf-8;');
-        }
-
-        // ==================== 📕 EXPORTAR PDF ====================
-        function exportarPDF() {
-            if (!reporteData || !reporteData.length) {
-                tg.showAlert('Primero generá el reporte');
-                return;
-            }
-
-            const desde = document.getElementById('reporte-desde').value;
-            const hasta = document.getElementById('reporte-hasta').value;
-            const grado = document.getElementById('grado')?.value || 'Todos';
-            const seccion = document.getElementById('seccion')?.value || 'Todas';
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // Titulo
-            doc.setFontSize(18);
-            doc.text('Reporte de Asistencia', 14, 20);
-            
-            // Subtitulo
-            doc.setFontSize(11);
-            doc.setTextColor(100);
-            doc.text(`Período: ${desde} al ${hasta}`, 14, 28);
-            doc.text(`Grado: ${grado} | Sección: ${seccion}`, 14, 34);
-            doc.text(`Generado: ${new Date().toLocaleString('es-ES')}`, 14, 40);
-
-            // Tabla
-            const headers = [['Alumno', 'Mat.', 'P', 'A', 'T', 'J', 'E', 'Total', '%']];
-            const body = reporteData.map(row => {
-                const total = row.P + row.A + row.T + row.J + row.E;
-                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
-                return [
-                    row.nombre,
-                    row.matricula,
-                    row.P,
-                    row.A,
-                    row.T,
-                    row.J,
-                    row.E,
-                    total,
-                    porcentaje + '%'
-                ];
-            });
-
-            doc.autoTable({
-                head: headers,
-                body: body,
-                startY: 45,
-                styles: { fontSize: 9, cellPadding: 2 },
-                headStyles: { fillColor: [102, 126, 234], textColor: 255 },
-                alternateRowStyles: { fillColor: [245, 245, 245] },
-                columnStyles: {
-                    0: { cellWidth: 50 },
-                    1: { cellWidth: 20 },
-                    2: { cellWidth: 8, halign: 'center' },
-                    3: { cellWidth: 8, halign: 'center' },
-                    4: { cellWidth: 8, halign: 'center' },
-                    5: { cellWidth: 8, halign: 'center' },
-                    6: { cellWidth: 8, halign: 'center' },
-                    7: { cellWidth: 12, halign: 'center' },
-                    8: { cellWidth: 12, halign: 'center' }
-                }
-            });
-
-            // Totales
-            const finalY = doc.lastAutoTable.finalY + 10;
-            const totales = reporteData.reduce((acc, row) => {
-                acc.P += row.P; acc.A += row.A; acc.T += row.T;
-                acc.J += row.J; acc.E += row.E; acc.total += row.dias;
-                return acc;
-            }, { P: 0, A: 0, T: 0, J: 0, E: 0, total: 0 });
-
-            doc.setFontSize(10);
-            doc.setTextColor(0);
-            doc.text('Resumen General:', 14, finalY);
-            doc.setFontSize(9);
-            doc.setTextColor(76, 175, 80);
-            doc.text(`✅ Presentes: ${totales.P}`, 14, finalY + 6);
-            doc.setTextColor(244, 67, 54);
-            doc.text(`❌ Ausentes: ${totales.A}`, 60, finalY + 6);
-            doc.setTextColor(255, 152, 0);
-            doc.text(`⏰ Tardanzas: ${totales.T}`, 110, finalY + 6);
-            doc.setTextColor(33, 150, 243);
-            doc.text(`📝 Justificados: ${totales.J}`, 14, finalY + 12);
-            doc.setTextColor(156, 39, 176);
-            doc.text(`🚌 Excursiones: ${totales.E}`, 60, finalY + 12);
-            doc.setTextColor(0);
-            doc.text(`📊 Total días: ${totales.total}`, 110, finalY + 12);
-
-            // Guardar usando el helper compatible con Telegram
-            const pdfBlob = doc.output('blob');
-            descargarBlob(pdfBlob, `reporte_asistencia_${desde}_al_${hasta}.pdf`, 'application/pdf');
-        }
-
-        // ==================== 📗 EXPORTAR EXCEL CON LINKS DE IMAGENES ====================
-        async function exportarExcel() {
-            if (!reporteData || !reporteData.length) {
-                tg.showAlert('Primero generá el reporte');
-                return;
-            }
-
-            const desde = document.getElementById('reporte-desde').value;
-            const hasta = document.getElementById('reporte-hasta').value;
-
-            // Obtener justificaciones del período para agregar links
-            let justificacionesMap = {};
-            try {
-                const params = new URLSearchParams();
-                params.append('desde', desde);
-                params.append('hasta', hasta);
-                
-                const r = await fetch(`${API}/asistencia/justificacion?${params}`);
-                const justData = await r.json();
-                
-                // Crear mapa: alumno_id -> array de justificaciones
-                justData.forEach(j => {
-                    if (!justificacionesMap[j.alumno_id]) {
-                        justificacionesMap[j.alumno_id] = [];
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data.url) {
+                            tg.openLink(data.url, { try_instant_view: false });
+                            console.log('✅ Descarga via backend URL:', data.url);
+                            return true;
+                        }
                     }
-                    justificacionesMap[j.alumno_id].push(j);
-                });
-            } catch (e) {
-                console.warn('No se pudieron cargar justificaciones para Excel:', e);
-            }
-
-            // Preparar datos para Excel
-            const excelData = reporteData.map(row => {
-                const total = row.P + row.A + row.T + row.J + row.E;
-                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
-                
-                // Buscar justificaciones de este alumno
-                const justs = justificacionesMap[row.id] || [];
-                const linksImagenes = justs
-                    .filter(j => j.archivo_url)
-                    .map(j => `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${j.archivo_url}`)
-                    .join('\n');
-                
-                const notas = justs.map(j => j.nota || '').filter(n => n).join(' | ');
-
-                return {
-                    'Alumno': row.nombre,
-                    'Matricula': row.matricula,
-                    'Grado': row.grado,
-                    'Seccion': row.seccion,
-                    'Presentes': row.P,
-                    'Ausentes': row.A,
-                    'Tardanzas': row.T,
-                    'Justificados': row.J,
-                    'Excursiones': row.E,
-                    'Total': total,
-                    'Dias': row.dias,
-                    '% Asistencia': porcentaje + '%',
-                    'Notas Justificacion': notas,
-                    'Links Imagenes': linksImagenes
-                };
-            });
-
-            // Crear workbook
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(excelData);
-
-            // Ajustar anchos de columna
-            const colWidths = [
-                { wch: 30 }, // Alumno
-                { wch: 12 }, // Matricula
-                { wch: 10 }, // Grado
-                { wch: 10 }, // Seccion
-                { wch: 10 }, // Presentes
-                { wch: 10 }, // Ausentes
-                { wch: 10 }, // Tardanzas
-                { wch: 12 }, // Justificados
-                { wch: 12 }, // Excursiones
-                { wch: 8 },  // Total
-                { wch: 8 },  // Dias
-                { wch: 12 }, // % Asistencia
-                { wch: 40 }, // Notas
-                { wch: 60 }  // Links Imagenes
-            ];
-            ws['!cols'] = colWidths;
-
-            // Hacer que los links sean clickeables (hipervinculos)
-            const range = XLSX.utils.decode_range(ws['!ref']);
-            const linksCol = 13; // Columna N (Links Imagenes)
-            
-            for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                const cellAddress = XLSX.utils.encode_cell({ r: R, c: linksCol });
-                const cell = ws[cellAddress];
-                
-                if (cell && cell.v && cell.v.includes('http')) {
-                    // Crear hyperlink
-                    const links = cell.v.split('\n').filter(l => l.trim());
-                    if (links.length > 0) {
-                        cell.l = { Target: links[0] };
-                        cell.v = links.length > 1 ? `${links[0]} (+${links.length - 1} más)` : links[0];
-                    }
+                } catch (e) {
+                    console.warn('❌ Estrategia backend fallo:', e);
                 }
             }
 
-            XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
-
-            // Agregar hoja resumen
-            const resumenData = [{
-                'Metrica': 'Total Alumnos',
-                'Valor': reporteData.length
-            }, {
-                'Metrica': 'Total Presentes',
-                'Valor': reporteData.reduce((a, b) => a + b.P, 0)
-            }, {
-                'Metrica': 'Total Ausentes',
-                'Valor': reporteData.reduce((a, b) => a + b.A, 0)
-            }, {
-                'Metrica': 'Total Tardanzas',
-                'Valor': reporteData.reduce((a, b) => a + b.T, 0)
-            }, {
-                'Metrica': 'Total Justificados',
-                'Valor': reporteData.reduce((a, b) => a + b.J, 0)
-            }, {
-                'Metrica': 'Total Excursiones',
-                'Valor': reporteData.reduce((a, b) => a + b.E, 0)
-            }, {
-                'Metrica': 'Período',
-                'Valor': `${desde} al ${hasta}`
-            }, {
-                'Metrica': 'Generado',
-                'Valor': new Date().toLocaleString('es-ES')
-            }];
-
-            const wsResumen = XLSX.utils.json_to_sheet(resumenData);
-            wsResumen['!cols'] = [{ wch: 25 }, { wch: 20 }];
-            XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
-
-            // Generar blob y descargar
-            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-            const excelBlob = new Blob([wbout], { type: 'application/octet-stream' });
-            descargarBlob(excelBlob, `reporte_asistencia_${desde}_al_${hasta}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        }
-
-        // ==================== 💾 HELPERS DE DESCARGA COMPATIBLES CON TELEGRAM ====================
-
-        /**
-         * Descarga texto/archivo funcionando en navegador normal y Telegram WebView
-         */
-        function descargarArchivo(contenido, nombreArchivo, mimeType) {
-            const blob = new Blob([contenido], { type: mimeType });
-            descargarBlob(blob, nombreArchivo, mimeType);
-        }
-
-        /**
-         * Descarga un Blob funcionando en navegador normal y Telegram WebView
-         * Usa múltiples estrategias: download link, openLink, y fallback
-         */
-        function descargarBlob(blob, nombreArchivo, mimeType) {
-            // Estrategia 1: URL.createObjectURL + anchor click (funciona en navegadores normales)
+            // Estrategia 1: URL.createObjectURL + anchor click (navegadores normales)
             try {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1159,36 +722,27 @@
                 a.download = nombreArchivo;
                 a.style.display = 'none';
                 document.body.appendChild(a);
-                
-                // Simular click programático
-                const clickEvent = new MouseEvent('click', {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window
-                });
-                a.dispatchEvent(clickEvent);
-                
+                a.click();
                 setTimeout(() => {
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
                 }, 100);
-                
-                console.log('✅ Descarga iniciada via blob URL:', nombreArchivo);
-                return;
+                console.log('✅ Descarga via blob URL:', nombreArchivo);
+                return true;
             } catch (e) {
-                console.warn('❌ Estrategia 1 falló:', e);
+                console.warn('❌ Estrategia blob fallo:', e);
             }
 
-            // Estrategia 2: Telegram WebApp openLink (para abrir en navegador externo)
+            // Estrategia 2: Telegram openLink con blob URL
             try {
                 const url = URL.createObjectURL(blob);
                 if (tg && tg.openLink) {
-                    tg.openLink(url);
-                    console.log('✅ Descarga iniciada via tg.openLink:', nombreArchivo);
-                    return;
+                    tg.openLink(url, { try_instant_view: false });
+                    console.log('✅ Descarga via tg.openLink blob:', nombreArchivo);
+                    return true;
                 }
             } catch (e) {
-                console.warn('❌ Estrategia 2 falló:', e);
+                console.warn('❌ Estrategia tg.openLink fallo:', e);
             }
 
             // Estrategia 3: Convertir a base64 y usar data URI
@@ -1208,54 +762,138 @@
                     }, 100);
                 };
                 reader.readAsDataURL(blob);
-                console.log('✅ Descarga iniciada via data URL:', nombreArchivo);
-                return;
+                console.log('✅ Descarga via data URL:', nombreArchivo);
+                return true;
             } catch (e) {
-                console.warn('❌ Estrategia 3 falló:', e);
+                console.warn('❌ Estrategia data URL fallo:', e);
             }
 
-            // Fallback: mostrar error
-            tg.showAlert('No se pudo descargar el archivo. Probá desde un navegador externo.');
+            tg.showAlert('No se pudo descargar el archivo. Proba desde un navegador externo.');
+            return false;
         }
 
-        // ==================== 📝 CARGAR JUSTIFICACION EXISTENTE ====================
+// ==================== EXPORTACIONES ====================
+        function exportarCSV() {
+            if (!reporteData || !reporteData.length) { tg.showAlert('Primero generá el reporte'); return; }
+            const desde = document.getElementById('reporte-desde').value;
+            const hasta = document.getElementById('reporte-hasta').value;
+            let csv = 'Alumno,Matricula,Grado,Seccion,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,%Asistencia\n';
+            reporteData.forEach(row => {
+                const total = row.P + row.A + row.T + row.J + row.E;
+                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
+                csv += `"${row.nombre}",${row.matricula},${row.grado},${row.seccion},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias},${porcentaje}%\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            descargarArchivoTelegram(blob, `reporte_asistencia_${desde}_al_${hasta}.csv`);
+        }
 
+        function exportarPDF() {
+            if (!reporteData || !reporteData.length) { tg.showAlert('Primero generá el reporte'); return; }
+            const desde = document.getElementById('reporte-desde').value;
+            const hasta = document.getElementById('reporte-hasta').value;
+            const grado = document.getElementById('grado')?.value || 'Todos';
+            const seccion = document.getElementById('seccion')?.value || 'Todas';
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape' });
+            doc.setFontSize(16);
+            doc.text(t('modal_reporte_title'), 14, 20);
+            doc.setFontSize(10);
+            doc.text(`Período: ${desde} al ${hasta}`, 14, 30);
+            doc.text(`Grado: ${grado} | Sección: ${seccion}`, 14, 37);
+            doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 44);
+            const headers = [['Alumno', 'Matrícula', 'P', 'A', 'T', 'J', 'E', 'Total', '%']];
+            const body = reporteData.map(row => {
+                const total = row.P + row.A + row.T + row.J + row.E;
+                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
+                return [row.nombre.substring(0, 30), row.matricula, row.P, row.A, row.T, row.J, row.E, total, porcentaje + '%'];
+            });
+            doc.autoTable({ head: headers, body: body, startY: 50, styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [102, 126, 234] } });
+            const finalY = doc.lastAutoTable.finalY + 10;
+            const totales = reporteData.reduce((acc, row) => {
+                acc.P += row.P; acc.A += row.A; acc.T += row.T; acc.J += row.J; acc.E += row.E; acc.total += row.dias;
+                return acc;
+            }, { P: 0, A: 0, T: 0, J: 0, E: 0, total: 0 });
+            doc.setFontSize(9);
+            doc.text(`✅ ${t('label_p')}: ${totales.P}   ❌ ${t('label_a')}: ${totales.A}   ⏰ ${t('label_t')}: ${totales.T}   📝 ${t('label_j')}: ${totales.J}   🚌 ${t('label_e')}: ${totales.E}   📊 Días: ${totales.total}`, 14, finalY);
+            const pdfBlob = doc.output('blob');
+            descargarArchivoTelegram(pdfBlob, `reporte_asistencia_${desde}_al_${hasta}.pdf`);
+        }
+
+        async function exportarExcel() {
+            if (!reporteData || !reporteData.length) { tg.showAlert('Primero generá el reporte'); return; }
+            const desde = document.getElementById('reporte-desde').value;
+            const hasta = document.getElementById('reporte-hasta').value;
+            let justificacionesMap = {};
+            try {
+                const params = new URLSearchParams();
+                params.append('desde', desde); params.append('hasta', hasta);
+                const r = await fetch(`${API}/asistencia/justificacion?${params}`);
+                const justData = await r.json();
+                justData.forEach(j => { if (!justificacionesMap[j.alumno_id]) justificacionesMap[j.alumno_id] = []; justificacionesMap[j.alumno_id].push(j); });
+            } catch (e) { console.warn('No se pudieron cargar justificaciones:', e); }
+            const excelData = reporteData.map(row => {
+                const total = row.P + row.A + row.T + row.J + row.E;
+                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
+                const justs = justificacionesMap[row.id] || [];
+                const linksImagenes = justs.filter(j => j.archivo_url).map(j => `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${j.archivo_url}`).join('\n');
+                const notas = justs.map(j => j.nota || '').filter(n => n).join(' | ');
+                return {
+                    'Alumno': row.nombre, 'Matricula': row.matricula, 'Grado': row.grado, 'Seccion': row.seccion,
+                    'Presentes': row.P, 'Ausentes': row.A, 'Tardanzas': row.T, 'Justificados': row.J, 'Excursiones': row.E,
+                    'Total': total, 'Dias': row.dias, '% Asistencia': porcentaje + '%',
+                    'Notas Justificacion': notas, 'Links Imagenes': linksImagenes
+                };
+            });
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            ws['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 40 }, { wch: 60 }];
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            const linksCol = 13;
+            for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                const cellAddress = XLSX.utils.encode_cell({ r: R, c: linksCol });
+                const cell = ws[cellAddress];
+                if (cell && cell.v && cell.v.includes('http')) {
+                    const links = cell.v.split('\n').filter(l => l.trim());
+                    if (links.length > 0) { cell.l = { Target: links[0] }; cell.v = links.length > 1 ? `${links[0]} (+${links.length - 1} más)` : links[0]; }
+                }
+            }
+            XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+            const resumenData = [
+                { 'Metrica': 'Total Alumnos', 'Valor': reporteData.length },
+                { 'Metrica': 'Total Presentes', 'Valor': reporteData.reduce((a, b) => a + b.P, 0) },
+                { 'Metrica': 'Total Ausentes', 'Valor': reporteData.reduce((a, b) => a + b.A, 0) },
+                { 'Metrica': 'Total Tardanzas', 'Valor': reporteData.reduce((a, b) => a + b.T, 0) },
+                { 'Metrica': 'Total Justificados', 'Valor': reporteData.reduce((a, b) => a + b.J, 0) },
+                { 'Metrica': 'Total Excursiones', 'Valor': reporteData.reduce((a, b) => a + b.E, 0) },
+                { 'Metrica': 'Período', 'Valor': `${desde} al ${hasta}` },
+                { 'Metrica': 'Generado', 'Valor': new Date().toLocaleString('es-ES') }
+            ];
+            const wsResumen = XLSX.utils.json_to_sheet(resumenData);
+            wsResumen['!cols'] = [{ wch: 25 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const excelBlob = new Blob([wbout], { type: 'application/octet-stream' });
+            descargarArchivoTelegram(excelBlob, `reporte_asistencia_${desde}_al_${hasta}.xlsx`);
+        }
+
+        // ==================== JUSTIFICACIONES ====================
         async function cargarJustificacionExistente(alumnoId) {
             try {
                 const params = new URLSearchParams();
-                params.append('alumno_id', alumnoId);
-                params.append('fecha', fechaSel);
-                
+                params.append('alumno_id', alumnoId); params.append('fecha', fechaSel);
                 const r = await fetch(`${API}/asistencia/justificacion?${params}`);
                 const data = await r.json();
-                
-                if (data && data.length > 0) {
-                    return data[0];
-                }
-                return null;
-            } catch (e) {
-                console.error('Error cargando justificacion:', e);
-                return null;
-            }
+                return (data && data.length) ? data[0] : null;
+            } catch (e) { return null; }
         }
-
-        // ==================== 📝 ABRIR JUSTIFICACION ====================
 
         async function abrirJustificacion(alumnoId) {
             const alumno = alumnos.find(a => a.id === alumnoId);
-            if (!alumno) {
-                console.error('Alumno no encontrado:', alumnoId);
-                return;
-            }
-
+            if (!alumno) return;
             alumnoJustificacionId = alumnoId;
-            
             const existente = await cargarJustificacionExistente(alumnoId);
             justificacionExistente = existente;
-            
-            document.getElementById('justificacion-alumno').textContent = 
-                alumno.nombre + ' ' + (alumno.apellido_paterno || '');
-            
+            document.getElementById('justificacion-alumno').textContent = alumno.nombre + ' ' + (alumno.apellido_paterno || '');
             const notaInput = document.getElementById('justificacion-nota');
             const previewDiv = document.getElementById('justificacion-preview');
             const archivoInput = document.getElementById('justificacion-archivo');
@@ -1263,65 +901,26 @@
             const btnAdjuntar = document.getElementById('btn-adjuntar-foto');
             const btnGuardar = document.getElementById('btn-guardar-justificacion');
             const titulo = document.getElementById('modal-justificacion-titulo');
-            
-            notaInput.value = '';
-            previewDiv.innerHTML = '';
-            archivoInput.value = '';
-            infoDiv.style.display = 'none';
-            infoDiv.innerHTML = '';
-            
+            notaInput.value = ''; previewDiv.innerHTML = ''; archivoInput.value = ''; infoDiv.style.display = 'none';
             if (existente) {
-                // MODO VER JUSTIFICACION EXISTENTE
-                titulo.textContent = '👁️ Ver Justificación';
-                
-                notaInput.value = existente.nota || '';
-                notaInput.readOnly = true;
-                notaInput.style.background = '#f5f5f5';
-                
+                titulo.textContent = t('modal_justificacion_title_view');
+                notaInput.value = existente.nota || ''; notaInput.readOnly = true; notaInput.style.background = '#f5f5f5';
                 infoDiv.style.display = 'block';
-                infoDiv.innerHTML = `
-                    <strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<br>
-                    <strong>👤 Por:</strong> Usuario #${existente.user_id || 'desconocido'}
-                `;
-                
+                infoDiv.innerHTML = `<strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<br><strong>👤 Por:</strong> Usuario #${existente.user_id || 'desconocido'}`;
                 if (existente.archivo_url) {
                     const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${existente.archivo_url}`;
-                    
-                    previewDiv.innerHTML = `
-                        <div style="margin: 10px 0;">
-                            <img src="${imageUrl}" 
-                                 class="adjunto-preview" 
-                                 onclick="window.open('${imageUrl}', '_blank')"
-                                 alt="Justificacion"
-                                 style="cursor: pointer;">
-                            <p style="font-size: 0.75rem; color: #888; margin-top: 6px; text-align: center;">
-                                👆 Tocá la imagen para ver en tamaño completo
-                            </p>
-                        </div>
-                    `;
-                } else {
-                    previewDiv.innerHTML = '<p style="color: #888; font-size: 0.85rem; text-align: center; padding: 10px;">📝 Solo nota de texto, sin imagen adjunta</p>';
-                }
-                
+                    previewDiv.innerHTML = `<div style="margin:10px 0;"><img src="${imageUrl}" class="adjunto-preview" onclick="window.open('${imageUrl}','_blank')" style="cursor:pointer;max-width:100%;border-radius:8px;"><p style="font-size:0.75rem;color:#888;margin-top:6px;text-align:center;">👆 Tocá la imagen para ver en tamaño completo</p></div>`;
+                } else previewDiv.innerHTML = '<p style="color:#888;font-size:0.85rem;text-align:center;padding:10px;">📝 Solo nota de texto, sin imagen adjunta</p>';
                 btnAdjuntar.style.display = 'none';
-                
-                btnGuardar.textContent = '✅ Cerrar';
-                btnGuardar.onclick = function() { cerrarModal('modal-justificacion'); };
-                
+                btnGuardar.textContent = t('btn_cerrar_just');
+                btnGuardar.onclick = () => cerrarModal('modal-justificacion');
             } else {
-                // MODO CREAR NUEVA JUSTIFICACION
-                titulo.textContent = '📝 Nueva Justificación';
-                
-                notaInput.readOnly = false;
-                notaInput.style.background = 'white';
-                notaInput.placeholder = 'Motivo de la justificación...';
-                
+                titulo.textContent = t('modal_justificacion_title_new');
+                notaInput.readOnly = false; notaInput.style.background = 'white'; notaInput.placeholder = t('justificacion_placeholder');
                 btnAdjuntar.style.display = 'inline-block';
-                
-                btnGuardar.textContent = 'Guardar Justificación';
+                btnGuardar.textContent = t('btn_guardar_just');
                 btnGuardar.onclick = guardarJustificacion;
             }
-            
             document.getElementById('modal-justificacion').classList.add('show');
         }
 
@@ -1329,9 +928,7 @@
             const preview = document.getElementById('justificacion-preview');
             if (input.files && input.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.innerHTML = '<img src="' + e.target.result + '" class="adjunto-preview">';
-                };
+                reader.onload = e => { preview.innerHTML = '<img src="' + e.target.result + '" class="adjunto-preview" style="max-width:100%;border-radius:8px;">'; };
                 reader.readAsDataURL(input.files[0]);
             }
         }
@@ -1339,87 +936,55 @@
         async function guardarJustificacion() {
             const nota = document.getElementById('justificacion-nota').value.trim();
             const archivoInput = document.getElementById('justificacion-archivo');
-
-            if (!nota && !archivoInput.files.length) {
-                tg.showAlert('Agregá una nota o adjuntá una foto');
-                return;
-            }
-
-            console.log('DEBUG - Guardando:', {
-                alumno_id: alumnoJustificacionId,
-                fecha: fechaSel,
-                nota: nota,
-                tieneArchivo: archivoInput.files.length > 0
-            });
-
+            if (!nota && !archivoInput.files.length) { tg.showAlert(t('justificacion_sin_nota')); return; }
             const formData = new FormData();
             formData.append('alumno_id', alumnoJustificacionId);
             formData.append('fecha', fechaSel);
             formData.append('nota', nota || 'Sin nota');
-
-            if (archivoInput.files.length) {
-                formData.append('archivo', archivoInput.files[0], archivoInput.files[0].name);
-            }
-
+            if (archivoInput.files.length) formData.append('archivo', archivoInput.files[0]);
+            const btnGuardar = document.getElementById('btn-guardar-justificacion');
+            const textoOriginal = btnGuardar.textContent;
+            btnGuardar.textContent = t('guardando'); btnGuardar.disabled = true;
             try {
-                const r = await fetch(`${API}/asistencia/justificacion`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const d = await r.json();
-                console.log('DEBUG - Respuesta:', d);
-
-                if (d.success) {
-                    tg.showAlert('✅ Justificación guardada');
+                const r = await fetch(`${API}/asistencia/justificacion`, { method: 'POST', body: formData });
+                let d;
+                if (r.headers.get('content-type')?.includes('application/json')) d = await r.json();
+                else throw new Error('Error en el servidor');
+                if (r.ok && d.success) {
+                    justificacionesDelDia[String(alumnoJustificacionId)] = { alumno_id: alumnoJustificacionId, fecha: fechaSel, nota: nota, archivo_url: d.data?.[0]?.archivo_url || null, created_at: new Date().toISOString() };
+                    renderizar();
+                    tg.showAlert(t('justificacion_guardada'));
                     cerrarModal('modal-justificacion');
-                } else {
-                    tg.showAlert('❌ Error: ' + (d.message || 'Error desconocido'));
-                }
-            } catch (e) {
-                console.error('DEBUG - Error:', e);
-                tg.showAlert('Error guardando: ' + e.message);
-            }
+                } else tg.showAlert(t('error_justificacion') + (d.detail || d.message || ''));
+            } catch (e) { tg.showAlert(t('error_justificacion') + e.message); }
+            finally { btnGuardar.textContent = textoOriginal; btnGuardar.disabled = false; }
         }
 
+        // ==================== QR SCANNER ====================
         function abrirQRScanner() {
-            if (!tg.showScanQrPopup) {
-                tg.showAlert('El escaner QR solo funciona dentro de Telegram. Abri la app desde Telegram.');
-                return;
+            if (typeof tg !== 'undefined' && tg.openScanQrPopup) {
+                tg.openScanQrPopup({ text: 'Escanea el QR del alumno' }, (text) => { if (text && text.trim()) procesarQR(text); });
+            } else if (typeof tg !== 'undefined' && tg.showScanQrPopup) {
+                tg.showScanQrPopup({ text: 'Escanea el QR del alumno' }, (text) => { if (text && text.trim()) { procesarQR(text); return true; } return false; });
+            } else {
+                const matricula = prompt(t('qr_no_soportado') + '\nIngrese la matrícula manualmente:');
+                if (matricula && matricula.trim()) procesarQR(matricula.trim());
             }
-
-            tg.showScanQrPopup({
-                text: 'Escanea el QR del alumno'
-            }, function(text) {
-                if (text) {
-                    procesarQR(text);
-                    return true;
-                }
-                return false;
-            });
         }
 
         function procesarQR(textoQR) {
-            const matricula = textoQR.replace('MAT:', '').replace('mat:', '').trim();
+            const matricula = textoQR.replace(/MAT[:|]?/i, '').trim();
             const alumno = alumnos.find(a => a.matricula === matricula);
-
-            if (!alumno) {
-                tg.showAlert('❌ Alumno no encontrado: ' + matricula);
-                return;
-            }
-
+            if (!alumno) { tg.showAlert(t('qr_alumno_no_encontrado') + matricula); return; }
             alumno.estado = 'P';
             renderizar();
             contar();
-            tg.showAlert('✅ ' + alumno.nombre + ' ' + (alumno.apellido_paterno || '') + ' marcado Presente');
+            tg.showAlert(t('qr_marcado', {nombre: alumno.nombre + ' ' + (alumno.apellido_paterno || '')}));
             if (navigator.vibrate) navigator.vibrate(50);
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
-        } else {
-            init();
-        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+        else init();
     </script>
 </body>
 </html>
