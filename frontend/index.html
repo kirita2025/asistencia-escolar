@@ -129,7 +129,7 @@
                 <span id="hora">--:--</span>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <button onclick="abrirQRScanner()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 10px;border-radius:10px;font-size:0.7rem;cursor:pointer;font-weight:600;">📷 QR</button>
-                    <button onclick="abrirModalAlumno()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 10px;border-radius:10px;font-size:0.7rem;cursor:pointer;font-weight:600;">➕ Alumno</button>
+                    <button onclick="abrirModalAlumno()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 10px;border-radius:10px;font-size:0.7rem;cursor:pointer;font-weight:600;" id="btn-agregar-alumno-header">➕ Alumno</button>
                     <select id="idioma-select" class="idioma-select">
                         <option value="es">🇪🇸 Español</option>
                         <option value="en">🇬🇧 English</option>
@@ -273,7 +273,7 @@
                 btn_csv: "📄 Descargar CSV", btn_pdf: "📕 Descargar PDF", btn_excel: "📗 Descargar Excel",
                 modal_justificacion_title_new: "📝 Nueva Justificación", modal_justificacion_title_view: "👁️ Ver Justificación",
                 justificacion_placeholder: "Motivo de la justificación...", btn_adjuntar: "📷 Adjuntar foto",
-                btn_guardar_just: "Guardar Justificación", btn_ver_just: "👁️ Ver Justificación", btn_cerrar_just: "✅ Cerrar",
+                btn_guardar_just: "Guardar Justificación", btn_ver_just: "👁️ Ver Justificación", btn_cerrar_just: "✅ Cerrar", btn_agregar_alumno: "➕ Alumno",
                 modal_alumno_title: "➕ Agregar Alumno", btn_guardar_alumno: "💾 Guardar Alumno",
                 alumno_nombre: "Nombre", alumno_apellido_paterno: "Apellido Paterno", alumno_apellido_materno: "Apellido Materno",
                 alumno_matricula: "Matrícula", alumno_grado: "Grado", alumno_seccion: "Sección",
@@ -302,7 +302,7 @@
                 btn_csv: "📄 Download CSV", btn_pdf: "📕 Download PDF", btn_excel: "📗 Download Excel",
                 modal_justificacion_title_new: "📝 New Justification", modal_justificacion_title_view: "👁️ View Justification",
                 justificacion_placeholder: "Reason for justification...", btn_adjuntar: "📷 Attach photo",
-                btn_guardar_just: "Save Justification", btn_ver_just: "👁️ View Justification", btn_cerrar_just: "✅ Close",
+                btn_guardar_just: "Save Justification", btn_ver_just: "👁️ View Justification", btn_cerrar_just: "✅ Close", btn_agregar_alumno: "➕ Student",
                 modal_alumno_title: "➕ Add Student", btn_guardar_alumno: "💾 Save Student",
                 alumno_nombre: "First Name", alumno_apellido_paterno: "Last Name", alumno_apellido_materno: "Mother's Last Name",
                 alumno_matricula: "Student ID", alumno_grado: "Grade", alumno_seccion: "Section",
@@ -331,7 +331,7 @@
                 btn_csv: "📄 Baixar CSV", btn_pdf: "📕 Baixar PDF", btn_excel: "📗 Baixar Excel",
                 modal_justificacion_title_new: "📝 Nova Justificativa", modal_justificacion_title_view: "👁️ Ver Justificativa",
                 justificacion_placeholder: "Motivo da justificativa...", btn_adjuntar: "📷 Anexar foto",
-                btn_guardar_just: "Salvar Justificativa", btn_ver_just: "👁️ Ver Justificativa", btn_cerrar_just: "✅ Fechar",
+                btn_guardar_just: "Salvar Justificativa", btn_ver_just: "👁️ Ver Justificativa", btn_cerrar_just: "✅ Fechar", btn_agregar_alumno: "➕ Aluno",
                 modal_alumno_title: "➕ Adicionar Aluno", btn_guardar_alumno: "💾 Salvar Aluno",
                 alumno_nombre: "Nome", alumno_apellido_paterno: "Sobrenome Paterno", alumno_apellido_materno: "Sobrenome Materno",
                 alumno_matricula: "Matrícula", alumno_grado: "Série", alumno_seccion: "Turma",
@@ -360,7 +360,7 @@
                 btn_generar_reporte: "สร้างรายงาน", btn_csv: "📄 ดาวน์โหลด CSV", btn_pdf: "📕 ดาวน์โหลด PDF", btn_excel: "📗 ดาวน์โหลด Excel",
                 modal_justificacion_title_new: "📝 หนังสืออนุญาตใหม่", modal_justificacion_title_view: "👁️ ดูหนังสืออนุญาต",
                 justificacion_placeholder: "เหตุผล...", btn_adjuntar: "📷 แนบรูปภาพ",
-                btn_guardar_just: "บันทึกหนังสืออนุญาต", btn_ver_just: "👁️ ดูหนังสืออนุญาต", btn_cerrar_just: "✅ ปิด",
+                btn_guardar_just: "บันทึกหนังสืออนุญาต", btn_ver_just: "👁️ ดูหนังสืออนุญาต", btn_cerrar_just: "✅ ปิด", btn_agregar_alumno: "➕ เพิ่มนักเรียน",
                 modal_alumno_title: "➕ เพิ่มนักเรียน", btn_guardar_alumno: "💾 บันทึกนักเรียน",
                 alumno_nombre: "ชื่อ", alumno_apellido_paterno: "นามสกุล", alumno_apellido_materno: "นามสกุลมารดา",
                 alumno_matricula: "รหัสนักเรียน", alumno_grado: "ระดับชั้น", alumno_seccion: "ห้อง",
@@ -418,6 +418,8 @@
             else document.getElementById('btn-guardar-justificacion').textContent = t('btn_guardar_just');
             document.getElementById('modal-alumno-titulo').textContent = t('modal_alumno_title');
             document.getElementById('btn-guardar-alumno').textContent = t('btn_guardar_alumno');
+            const btnHeader = document.getElementById('btn-agregar-alumno-header');
+            if (btnHeader) btnHeader.textContent = t('btn_agregar_alumno');
             const soloLectura = document.getElementById('solo-lectura');
             if (soloLectura.style.display === 'block') soloLectura.textContent = t('solo_lectura');
             const gradoSelect = document.getElementById('grado');
