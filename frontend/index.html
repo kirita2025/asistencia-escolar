@@ -217,7 +217,7 @@
         let justificacionesDelDia = {};
         let currentLang = 'es';
 
-        // ==================== TRADUCCIONES COMPLETAS ====================
+        // ==================== TRADUCCIONES ====================
         const translations = {
             es: {
                 app_title: "📚 Control de Asistencia", label_fecha: "📅 Fecha de asistencia", btn_hoy: "Hoy",
@@ -669,21 +669,73 @@
             data.forEach(row => {
                 const total = row.P + row.A + row.T + row.J + row.E;
                 const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
-                html += `<tr><td><strong>${row.nombre}</strong><br><small>${row.matricula}</small></td>
-                        <td style="color:#4caf50">${row.P}</td><td style="color:#f44336">${row.A}</td>
-                        <td style="color:#ff9800">${row.T}</td><td style="color:#2196f3">${row.J}</td>
-                        <td style="color:#9c27b0">${row.E}</td>
-                        <td><strong>${porcentaje}%</strong>
-                            <div class="estadistica-bar"><div class="est-p" style="width:${row.P/total*100}%"></div>
-                            <div class="est-a" style="width:${row.A/total*100}%"></div><div class="est-t" style="width:${row.T/total*100}%"></div>
-                            <div class="est-j" style="width:${row.J/total*100}%"></div><div class="est-e" style="width:${row.E/total*100}%"></div></div>
-                        </td></tr>`;
+                html += `<tr>
+                    <td><strong>${row.nombre}</strong><br><small>${row.matricula}</small></td>
+                    <td style="color:#4caf50">${row.P}</td><td style="color:#f44336">${row.A}</td>
+                    <td style="color:#ff9800">${row.T}</td><td style="color:#2196f3">${row.J}</td>
+                    <td style="color:#9c27b0">${row.E}</td>
+                    <td><strong>${porcentaje}%</strong>
+                        <div class="estadistica-bar"><div class="est-p" style="width:${row.P/total*100}%"></div>
+                        <div class="est-a" style="width:${row.A/total*100}%"></div><div class="est-t" style="width:${row.T/total*100}%"></div>
+                        <div class="est-j" style="width:${row.J/total*100}%"></div><div class="est-e" style="width:${row.E/total*100}%"></div></div>
+                    </td>
+                </tr>`;
             });
             html += '</tbody></table>';
             document.getElementById('reporte-contenido').innerHTML = html;
         }
 
-        // ==================== EXPORTACIONES QUE FUNCIONAN (de la versión sin idioma) ====================
+        // ==================== FUNCIÓN DE DESCARGA DEFINITIVA (funciona en todas las plataformas) ====================
+        async function descargarArchivoTelegram(blob, nombreArchivo) {
+            // Método 1: Usar openLink con URL de objeto (funciona en Desktop y Web)
+            try {
+                const url = URL.createObjectURL(blob);
+                if (tg && tg.openLink) {
+                    tg.openLink(url);
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    return true;
+                }
+            } catch (e) { console.warn('openLink falló:', e); }
+            
+            // Método 2: Crear elemento a y click (fallback)
+            try {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = nombreArchivo;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+                return true;
+            } catch (e) { console.warn('click falló:', e); }
+            
+            // Método 3: Data URL (último recurso)
+            try {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    if (tg && tg.openLink) {
+                        tg.openLink(dataUrl);
+                    } else {
+                        const a = document.createElement('a');
+                        a.href = dataUrl;
+                        a.download = nombreArchivo;
+                        a.target = '_blank';
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => document.body.removeChild(a), 100);
+                    }
+                };
+                reader.readAsDataURL(blob);
+                return true;
+            } catch (e) { console.warn('dataURL falló:', e); }
+            
+            tg.showAlert('No se pudo descargar el archivo. Intente desde otro dispositivo.');
+            return false;
+        }
+
+        // ==================== EXPORTACIONES ====================
         function exportarCSV() {
             if (!reporteData || !reporteData.length) { tg.showAlert('Primero generá el reporte'); return; }
             const desde = document.getElementById('reporte-desde').value;
@@ -694,7 +746,8 @@
                 const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
                 csv += `"${row.nombre}",${row.matricula},${row.grado},${row.seccion},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias},${porcentaje}%\n`;
             });
-            descargarArchivo(csv, `reporte_asistencia_${desde}_al_${hasta}.csv`, 'text/csv;charset=utf-8;');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            descargarArchivoTelegram(blob, `reporte_asistencia_${desde}_al_${hasta}.csv`);
         }
 
         function exportarPDF() {
@@ -726,7 +779,7 @@
             doc.setFontSize(9);
             doc.text(`✅ ${t('label_p')}: ${totales.P}   ❌ ${t('label_a')}: ${totales.A}   ⏰ ${t('label_t')}: ${totales.T}   📝 ${t('label_j')}: ${totales.J}   🚌 ${t('label_e')}: ${totales.E}   📊 Días: ${totales.total}`, 14, finalY);
             const pdfBlob = doc.output('blob');
-            descargarBlob(pdfBlob, `reporte_asistencia_${desde}_al_${hasta}.pdf`, 'application/pdf');
+            descargarArchivoTelegram(pdfBlob, `reporte_asistencia_${desde}_al_${hasta}.pdf`);
         }
 
         async function exportarExcel() {
@@ -783,47 +836,7 @@
             XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             const excelBlob = new Blob([wbout], { type: 'application/octet-stream' });
-            descargarBlob(excelBlob, `reporte_asistencia_${desde}_al_${hasta}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        }
-
-        // ==================== HELPERS DE DESCARGA (funcionan en Telegram) ====================
-        function descargarArchivo(contenido, nombreArchivo, mimeType) {
-            const blob = new Blob([contenido], { type: mimeType });
-            descargarBlob(blob, nombreArchivo, mimeType);
-        }
-
-        function descargarBlob(blob, nombreArchivo, mimeType) {
-            try {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = nombreArchivo;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-                a.dispatchEvent(clickEvent);
-                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-                console.log('✅ Descarga iniciada:', nombreArchivo);
-                return;
-            } catch (e) { console.warn('Error descarga:', e); }
-            try {
-                const url = URL.createObjectURL(blob);
-                if (tg && tg.openLink) { tg.openLink(url); return; }
-            } catch (e) {}
-            try {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const a = document.createElement('a');
-                    a.href = e.target.result;
-                    a.download = nombreArchivo;
-                    a.target = '_blank';
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => document.body.removeChild(a), 100);
-                };
-                reader.readAsDataURL(blob);
-            } catch (e) { tg.showAlert('No se pudo descargar el archivo.'); }
+            descargarArchivoTelegram(excelBlob, `reporte_asistencia_${desde}_al_${hasta}.xlsx`);
         }
 
         // ==================== JUSTIFICACIONES ====================
