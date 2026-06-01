@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Control de Asistencia</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Librerias para exportar PDF y Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <!-- Atrapador Global de Errores Visuales -->
     <script>
@@ -195,20 +199,17 @@
         .btn-modal {
             width: 100%;
             padding: 12px;
-            background: #667eea;
-            color: white;
             border: none;
             border-radius: 10px;
             font-weight: 700;
             cursor: pointer;
-            margin-top: 12px;
+            margin-top: 8px;
             font-family: inherit;
             font-size: 0.9rem;
         }
-        .btn-exportar {
-            background: #4caf50;
-            margin-top: 8px;
-        }
+        .btn-exportar-csv { background: #4caf50; color: white; }
+        .btn-exportar-pdf { background: #f44336; color: white; }
+        .btn-exportar-excel { background: #2196f3; color: white; }
         .estadistica-bar {
             display: flex;
             height: 8px;
@@ -307,8 +308,10 @@
                     <input type="date" id="reporte-desde" placeholder="Desde">
                     <input type="date" id="reporte-hasta" placeholder="Hasta">
                 </div>
-                <button class="btn-modal" onclick="generarReporte()">Generar Reporte</button>
-                <button class="btn-modal btn-exportar" onclick="exportarCSV()">📥 Descargar CSV</button>
+                <button class="btn-modal" style="background: #667eea; color: white;" onclick="generarReporte()">Generar Reporte</button>
+                <button class="btn-modal btn-exportar-csv" onclick="exportarCSV()">📄 Descargar CSV</button>
+                <button class="btn-modal btn-exportar-pdf" onclick="exportarPDF()">📕 Descargar PDF</button>
+                <button class="btn-modal btn-exportar-excel" onclick="exportarExcel()">📗 Descargar Excel</button>
                 <div id="reporte-contenido"></div>
             </div>
         </div>
@@ -875,6 +878,7 @@
             document.getElementById('reporte-contenido').innerHTML = html;
         }
 
+        // ==================== 📄 EXPORTAR CSV ====================
         function exportarCSV() {
             if (!reporteData || !reporteData.length) {
                 tg.showAlert('Primero generá el reporte');
@@ -884,23 +888,334 @@
             const desde = document.getElementById('reporte-desde').value;
             const hasta = document.getElementById('reporte-hasta').value;
 
-            let csv = 'Alumno,Matricula,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,\n';
+            let csv = 'Alumno,Matricula,Grado,Seccion,Presentes,Ausentes,Tardanzas,Justificados,Excursiones,Total,Dias,%Asistencia\n';
 
             reporteData.forEach(row => {
                 const total = row.P + row.A + row.T + row.J + row.E;
-                csv += `"${row.nombre}",${row.matricula},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias}\n`;
+                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
+                csv += `"${row.nombre}",${row.matricula},${row.grado},${row.seccion},${row.P},${row.A},${row.T},${row.J},${row.E},${total},${row.dias},${porcentaje}%\n`;
             });
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
+            descargarArchivo(csv, `reporte_asistencia_${desde}_al_${hasta}.csv`, 'text/csv;charset=utf-8;');
+        }
+
+        // ==================== 📕 EXPORTAR PDF ====================
+        function exportarPDF() {
+            if (!reporteData || !reporteData.length) {
+                tg.showAlert('Primero generá el reporte');
+                return;
+            }
+
+            const desde = document.getElementById('reporte-desde').value;
+            const hasta = document.getElementById('reporte-hasta').value;
+            const grado = document.getElementById('grado')?.value || 'Todos';
+            const seccion = document.getElementById('seccion')?.value || 'Todas';
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Titulo
+            doc.setFontSize(18);
+            doc.text('Reporte de Asistencia', 14, 20);
             
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `reporte_${desde}_al_${hasta}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // Subtitulo
+            doc.setFontSize(11);
+            doc.setTextColor(100);
+            doc.text(`Período: ${desde} al ${hasta}`, 14, 28);
+            doc.text(`Grado: ${grado} | Sección: ${seccion}`, 14, 34);
+            doc.text(`Generado: ${new Date().toLocaleString('es-ES')}`, 14, 40);
+
+            // Tabla
+            const headers = [['Alumno', 'Mat.', 'P', 'A', 'T', 'J', 'E', 'Total', '%']];
+            const body = reporteData.map(row => {
+                const total = row.P + row.A + row.T + row.J + row.E;
+                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
+                return [
+                    row.nombre,
+                    row.matricula,
+                    row.P,
+                    row.A,
+                    row.T,
+                    row.J,
+                    row.E,
+                    total,
+                    porcentaje + '%'
+                ];
+            });
+
+            doc.autoTable({
+                head: headers,
+                body: body,
+                startY: 45,
+                styles: { fontSize: 9, cellPadding: 2 },
+                headStyles: { fillColor: [102, 126, 234], textColor: 255 },
+                alternateRowStyles: { fillColor: [245, 245, 245] },
+                columnStyles: {
+                    0: { cellWidth: 50 },
+                    1: { cellWidth: 20 },
+                    2: { cellWidth: 8, halign: 'center' },
+                    3: { cellWidth: 8, halign: 'center' },
+                    4: { cellWidth: 8, halign: 'center' },
+                    5: { cellWidth: 8, halign: 'center' },
+                    6: { cellWidth: 8, halign: 'center' },
+                    7: { cellWidth: 12, halign: 'center' },
+                    8: { cellWidth: 12, halign: 'center' }
+                }
+            });
+
+            // Totales
+            const finalY = doc.lastAutoTable.finalY + 10;
+            const totales = reporteData.reduce((acc, row) => {
+                acc.P += row.P; acc.A += row.A; acc.T += row.T;
+                acc.J += row.J; acc.E += row.E; acc.total += row.dias;
+                return acc;
+            }, { P: 0, A: 0, T: 0, J: 0, E: 0, total: 0 });
+
+            doc.setFontSize(10);
+            doc.setTextColor(0);
+            doc.text('Resumen General:', 14, finalY);
+            doc.setFontSize(9);
+            doc.setTextColor(76, 175, 80);
+            doc.text(`✅ Presentes: ${totales.P}`, 14, finalY + 6);
+            doc.setTextColor(244, 67, 54);
+            doc.text(`❌ Ausentes: ${totales.A}`, 60, finalY + 6);
+            doc.setTextColor(255, 152, 0);
+            doc.text(`⏰ Tardanzas: ${totales.T}`, 110, finalY + 6);
+            doc.setTextColor(33, 150, 243);
+            doc.text(`📝 Justificados: ${totales.J}`, 14, finalY + 12);
+            doc.setTextColor(156, 39, 176);
+            doc.text(`🚌 Excursiones: ${totales.E}`, 60, finalY + 12);
+            doc.setTextColor(0);
+            doc.text(`📊 Total días: ${totales.total}`, 110, finalY + 12);
+
+            // Guardar usando el helper compatible con Telegram
+            const pdfBlob = doc.output('blob');
+            descargarBlob(pdfBlob, `reporte_asistencia_${desde}_al_${hasta}.pdf`, 'application/pdf');
+        }
+
+        // ==================== 📗 EXPORTAR EXCEL CON LINKS DE IMAGENES ====================
+        async function exportarExcel() {
+            if (!reporteData || !reporteData.length) {
+                tg.showAlert('Primero generá el reporte');
+                return;
+            }
+
+            const desde = document.getElementById('reporte-desde').value;
+            const hasta = document.getElementById('reporte-hasta').value;
+
+            // Obtener justificaciones del período para agregar links
+            let justificacionesMap = {};
+            try {
+                const params = new URLSearchParams();
+                params.append('desde', desde);
+                params.append('hasta', hasta);
+                
+                const r = await fetch(`${API}/asistencia/justificacion?${params}`);
+                const justData = await r.json();
+                
+                // Crear mapa: alumno_id -> array de justificaciones
+                justData.forEach(j => {
+                    if (!justificacionesMap[j.alumno_id]) {
+                        justificacionesMap[j.alumno_id] = [];
+                    }
+                    justificacionesMap[j.alumno_id].push(j);
+                });
+            } catch (e) {
+                console.warn('No se pudieron cargar justificaciones para Excel:', e);
+            }
+
+            // Preparar datos para Excel
+            const excelData = reporteData.map(row => {
+                const total = row.P + row.A + row.T + row.J + row.E;
+                const porcentaje = total > 0 ? Math.round((row.P / total) * 100) : 0;
+                
+                // Buscar justificaciones de este alumno
+                const justs = justificacionesMap[row.id] || [];
+                const linksImagenes = justs
+                    .filter(j => j.archivo_url)
+                    .map(j => `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${j.archivo_url}`)
+                    .join('\n');
+                
+                const notas = justs.map(j => j.nota || '').filter(n => n).join(' | ');
+
+                return {
+                    'Alumno': row.nombre,
+                    'Matricula': row.matricula,
+                    'Grado': row.grado,
+                    'Seccion': row.seccion,
+                    'Presentes': row.P,
+                    'Ausentes': row.A,
+                    'Tardanzas': row.T,
+                    'Justificados': row.J,
+                    'Excursiones': row.E,
+                    'Total': total,
+                    'Dias': row.dias,
+                    '% Asistencia': porcentaje + '%',
+                    'Notas Justificacion': notas,
+                    'Links Imagenes': linksImagenes
+                };
+            });
+
+            // Crear workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(excelData);
+
+            // Ajustar anchos de columna
+            const colWidths = [
+                { wch: 30 }, // Alumno
+                { wch: 12 }, // Matricula
+                { wch: 10 }, // Grado
+                { wch: 10 }, // Seccion
+                { wch: 10 }, // Presentes
+                { wch: 10 }, // Ausentes
+                { wch: 10 }, // Tardanzas
+                { wch: 12 }, // Justificados
+                { wch: 12 }, // Excursiones
+                { wch: 8 },  // Total
+                { wch: 8 },  // Dias
+                { wch: 12 }, // % Asistencia
+                { wch: 40 }, // Notas
+                { wch: 60 }  // Links Imagenes
+            ];
+            ws['!cols'] = colWidths;
+
+            // Hacer que los links sean clickeables (hipervinculos)
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            const linksCol = 13; // Columna N (Links Imagenes)
+            
+            for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                const cellAddress = XLSX.utils.encode_cell({ r: R, c: linksCol });
+                const cell = ws[cellAddress];
+                
+                if (cell && cell.v && cell.v.includes('http')) {
+                    // Crear hyperlink
+                    const links = cell.v.split('\n').filter(l => l.trim());
+                    if (links.length > 0) {
+                        cell.l = { Target: links[0] };
+                        cell.v = links.length > 1 ? `${links[0]} (+${links.length - 1} más)` : links[0];
+                    }
+                }
+            }
+
+            XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
+
+            // Agregar hoja resumen
+            const resumenData = [{
+                'Metrica': 'Total Alumnos',
+                'Valor': reporteData.length
+            }, {
+                'Metrica': 'Total Presentes',
+                'Valor': reporteData.reduce((a, b) => a + b.P, 0)
+            }, {
+                'Metrica': 'Total Ausentes',
+                'Valor': reporteData.reduce((a, b) => a + b.A, 0)
+            }, {
+                'Metrica': 'Total Tardanzas',
+                'Valor': reporteData.reduce((a, b) => a + b.T, 0)
+            }, {
+                'Metrica': 'Total Justificados',
+                'Valor': reporteData.reduce((a, b) => a + b.J, 0)
+            }, {
+                'Metrica': 'Total Excursiones',
+                'Valor': reporteData.reduce((a, b) => a + b.E, 0)
+            }, {
+                'Metrica': 'Período',
+                'Valor': `${desde} al ${hasta}`
+            }, {
+                'Metrica': 'Generado',
+                'Valor': new Date().toLocaleString('es-ES')
+            }];
+
+            const wsResumen = XLSX.utils.json_to_sheet(resumenData);
+            wsResumen['!cols'] = [{ wch: 25 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+
+            // Generar blob y descargar
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const excelBlob = new Blob([wbout], { type: 'application/octet-stream' });
+            descargarBlob(excelBlob, `reporte_asistencia_${desde}_al_${hasta}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        }
+
+        // ==================== 💾 HELPERS DE DESCARGA COMPATIBLES CON TELEGRAM ====================
+
+        /**
+         * Descarga texto/archivo funcionando en navegador normal y Telegram WebView
+         */
+        function descargarArchivo(contenido, nombreArchivo, mimeType) {
+            const blob = new Blob([contenido], { type: mimeType });
+            descargarBlob(blob, nombreArchivo, mimeType);
+        }
+
+        /**
+         * Descarga un Blob funcionando en navegador normal y Telegram WebView
+         * Usa múltiples estrategias: download link, openLink, y fallback
+         */
+        function descargarBlob(blob, nombreArchivo, mimeType) {
+            // Estrategia 1: URL.createObjectURL + anchor click (funciona en navegadores normales)
+            try {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = nombreArchivo;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                
+                // Simular click programático
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                });
+                a.dispatchEvent(clickEvent);
+                
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                console.log('✅ Descarga iniciada via blob URL:', nombreArchivo);
+                return;
+            } catch (e) {
+                console.warn('❌ Estrategia 1 falló:', e);
+            }
+
+            // Estrategia 2: Telegram WebApp openLink (para abrir en navegador externo)
+            try {
+                const url = URL.createObjectURL(blob);
+                if (tg && tg.openLink) {
+                    tg.openLink(url);
+                    console.log('✅ Descarga iniciada via tg.openLink:', nombreArchivo);
+                    return;
+                }
+            } catch (e) {
+                console.warn('❌ Estrategia 2 falló:', e);
+            }
+
+            // Estrategia 3: Convertir a base64 y usar data URI
+            try {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const dataUrl = e.target.result;
+                    const a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = nombreArchivo;
+                    a.target = '_blank';
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                    }, 100);
+                };
+                reader.readAsDataURL(blob);
+                console.log('✅ Descarga iniciada via data URL:', nombreArchivo);
+                return;
+            } catch (e) {
+                console.warn('❌ Estrategia 3 falló:', e);
+            }
+
+            // Fallback: mostrar error
+            tg.showAlert('No se pudo descargar el archivo. Probá desde un navegador externo.');
         }
 
         // ==================== 📝 CARGAR JUSTIFICACION EXISTENTE ====================
@@ -965,7 +1280,7 @@
                 
                 infoDiv.style.display = 'block';
                 infoDiv.innerHTML = `
-                    <strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<<br>
+                    <strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<br>
                     <strong>👤 Por:</strong> Usuario #${existente.user_id || 'desconocido'}
                 `;
                 
