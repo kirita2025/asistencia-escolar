@@ -329,7 +329,9 @@
             return text;
         }
 
-        function getEstadoLabel(cod) { return t(`estados.${cod}`); }
+        function getEstadoLabel(cod) { 
+            return translations[currentLang]?.estados?.[cod] || translations['es']?.estados?.[cod] || cod; 
+        }
 
         function applyTranslations() {
             document.getElementById('app-title').textContent = t('app_title');
