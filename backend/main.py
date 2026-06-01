@@ -178,6 +178,37 @@ async def get_alumnos(grado: Optional[str] = None, seccion: Optional[str] = None
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/alumnos")
+async def crear_alumno(
+    nombre: str = Form(...),
+    apellido_paterno: str = Form(default=""),
+    apellido_materno: str = Form(default=""),
+    matricula: str = Form(...),
+    grado: str = Form(...),
+    seccion: str = Form(...)
+):
+    try:
+        # Verificar que la matricula no exista
+        existente = supabase.table("alumnos").select("*").eq("matricula", matricula).execute()
+        if existente.data and len(existente.data) > 0:
+            raise HTTPException(status_code=409, detail="La matricula ya existe")
+
+        data = {
+            "nombre": nombre,
+            "apellido_paterno": apellido_paterno,
+            "apellido_materno": apellido_materno,
+            "matricula": matricula,
+            "grado": grado,
+            "seccion": seccion
+        }
+        result = supabase.table("alumnos").insert(data).execute()
+        return {"success": True, "data": result.data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/asistencia/hoy")
 async def get_asistencia_hoy(fecha: str, grado: Optional[str] = None, seccion: Optional[str] = None):
     try:
