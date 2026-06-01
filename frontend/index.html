@@ -111,7 +111,13 @@
         .btn-adjuntar { font-size: 0.75rem; padding: 6px 10px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; margin-top: 4px; font-family: inherit; }
         .adjunto-preview { max-width: 100%; border-radius: 8px; margin-top: 8px; border: 1px solid #ddd; }
         .justificacion-info { font-size: 0.8rem; color: #666; margin: 8px 0; padding: 8px; background: #f9f9f9; border-radius: 6px; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 0.75rem; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+        .form-group input { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 0.9rem; font-family: inherit; -webkit-appearance: none; }
+        .form-group input:focus { outline: none; border-color: #667eea; }
+        .btn-agregar-alumno { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
     </style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -123,6 +129,7 @@
                 <span id="hora">--:--</span>
                 <div style="display:flex;gap:8px;align-items:center;">
                     <button onclick="abrirQRScanner()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 10px;border-radius:10px;font-size:0.7rem;cursor:pointer;font-weight:600;">📷 QR</button>
+                    <button onclick="abrirModalAlumno()" style="background:rgba(255,255,255,0.25);border:none;color:white;padding:4px 10px;border-radius:10px;font-size:0.7rem;cursor:pointer;font-weight:600;">➕ Alumno</button>
                     <select id="idioma-select" class="idioma-select">
                         <option value="es">🇪🇸 Español</option>
                         <option value="en">🇬🇧 English</option>
@@ -206,6 +213,42 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-alumno">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modal-alumno-titulo">➕ Agregar Alumno</h2>
+                <button class="modal-close" onclick="cerrarModal('modal-alumno')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="alumno-nombre" placeholder="Ej: Juan">
+                </div>
+                <div class="form-group">
+                    <label>Apellido Paterno</label>
+                    <input type="text" id="alumno-apellido-paterno" placeholder="Ej: Pérez">
+                </div>
+                <div class="form-group">
+                    <label>Apellido Materno</label>
+                    <input type="text" id="alumno-apellido-materno" placeholder="Ej: García">
+                </div>
+                <div class="form-group">
+                    <label>Matrícula</label>
+                    <input type="text" id="alumno-matricula" placeholder="Ej: 1001">
+                </div>
+                <div class="form-group">
+                    <label>Grado</label>
+                    <input type="text" id="alumno-grado" placeholder="Ej: 1ro, 2do, 3ro...">
+                </div>
+                <div class="form-group">
+                    <label>Sección</label>
+                    <input type="text" id="alumno-seccion" placeholder="Ej: A, B, C...">
+                </div>
+                <button class="btn-modal btn-agregar-alumno" id="btn-guardar-alumno" onclick="guardarAlumno()">💾 Guardar Alumno</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API = 'https://bot-proveedores-backend.onrender.com/api';
         const SUPABASE_URL = 'https://jqxiqvbkyyxlzisfdrcr.supabase.co';
@@ -231,6 +274,10 @@
                 modal_justificacion_title_new: "📝 Nueva Justificación", modal_justificacion_title_view: "👁️ Ver Justificación",
                 justificacion_placeholder: "Motivo de la justificación...", btn_adjuntar: "📷 Adjuntar foto",
                 btn_guardar_just: "Guardar Justificación", btn_ver_just: "👁️ Ver Justificación", btn_cerrar_just: "✅ Cerrar",
+                modal_alumno_title: "➕ Agregar Alumno", btn_guardar_alumno: "💾 Guardar Alumno",
+                alumno_nombre: "Nombre", alumno_apellido_paterno: "Apellido Paterno", alumno_apellido_materno: "Apellido Materno",
+                alumno_matricula: "Matrícula", alumno_grado: "Grado", alumno_seccion: "Sección",
+                alumno_exito: "✅ Alumno agregado", alumno_error: "Error agregando alumno: ", alumno_matricula_existe: "La matrícula ya existe",
                 estados: { P: "Presente", A: "Ausente", T: "Tardanza", J: "Justificado", E: "Excursión" },
                 loading_alumnos: "⏳ Cargando alumnos...", no_alumnos: "No hay alumnos",
                 sin_asistencia: "No hay asistencia para guardar", error_guardar: "Error: ",
@@ -256,6 +303,10 @@
                 modal_justificacion_title_new: "📝 New Justification", modal_justificacion_title_view: "👁️ View Justification",
                 justificacion_placeholder: "Reason for justification...", btn_adjuntar: "📷 Attach photo",
                 btn_guardar_just: "Save Justification", btn_ver_just: "👁️ View Justification", btn_cerrar_just: "✅ Close",
+                modal_alumno_title: "➕ Add Student", btn_guardar_alumno: "💾 Save Student",
+                alumno_nombre: "First Name", alumno_apellido_paterno: "Last Name", alumno_apellido_materno: "Mother's Last Name",
+                alumno_matricula: "Student ID", alumno_grado: "Grade", alumno_seccion: "Section",
+                alumno_exito: "✅ Student added", alumno_error: "Error adding student: ", alumno_matricula_existe: "Student ID already exists",
                 estados: { P: "Present", A: "Absent", T: "Late", J: "Excused", E: "Field Trip" },
                 loading_alumnos: "⏳ Loading students...", no_alumnos: "No students",
                 sin_asistencia: "No attendance to save", error_guardar: "Error: ",
@@ -281,6 +332,10 @@
                 modal_justificacion_title_new: "📝 Nova Justificativa", modal_justificacion_title_view: "👁️ Ver Justificativa",
                 justificacion_placeholder: "Motivo da justificativa...", btn_adjuntar: "📷 Anexar foto",
                 btn_guardar_just: "Salvar Justificativa", btn_ver_just: "👁️ Ver Justificativa", btn_cerrar_just: "✅ Fechar",
+                modal_alumno_title: "➕ Adicionar Aluno", btn_guardar_alumno: "💾 Salvar Aluno",
+                alumno_nombre: "Nome", alumno_apellido_paterno: "Sobrenome Paterno", alumno_apellido_materno: "Sobrenome Materno",
+                alumno_matricula: "Matrícula", alumno_grado: "Série", alumno_seccion: "Turma",
+                alumno_exito: "✅ Aluno adicionado", alumno_error: "Erro ao adicionar aluno: ", alumno_matricula_existe: "Matrícula já existe",
                 estados: { P: "Presente", A: "Ausente", T: "Atraso", J: "Justificado", E: "Excursão" },
                 loading_alumnos: "⏳ Carregando alunos...", no_alumnos: "Nenhum aluno",
                 sin_asistencia: "Nenhuma frequência para salvar", error_guardar: "Erro: ",
@@ -306,6 +361,10 @@
                 modal_justificacion_title_new: "📝 หนังสืออนุญาตใหม่", modal_justificacion_title_view: "👁️ ดูหนังสืออนุญาต",
                 justificacion_placeholder: "เหตุผล...", btn_adjuntar: "📷 แนบรูปภาพ",
                 btn_guardar_just: "บันทึกหนังสืออนุญาต", btn_ver_just: "👁️ ดูหนังสืออนุญาต", btn_cerrar_just: "✅ ปิด",
+                modal_alumno_title: "➕ เพิ่มนักเรียน", btn_guardar_alumno: "💾 บันทึกนักเรียน",
+                alumno_nombre: "ชื่อ", alumno_apellido_paterno: "นามสกุล", alumno_apellido_materno: "นามสกุลมารดา",
+                alumno_matricula: "รหัสนักเรียน", alumno_grado: "ระดับชั้น", alumno_seccion: "ห้อง",
+                alumno_exito: "✅ เพิ่มนักเรียนแล้ว", alumno_error: "ข้อผิดพลาดในการเพิ่มนักเรียน: ", alumno_matricula_existe: "รหัสนักเรียนมีอยู่แล้ว",
                 estados: { P: "มาเรียน", A: "ขาดเรียน", T: "มาสาย", J: "ขาดเรียนมีเหตุผล", E: "ไปทัศนศึกษานอกสถานที่" },
                 loading_alumnos: "⏳ กำลังโหลดนักเรียน...", no_alumnos: "ไม่มีนักเรียน",
                 sin_asistencia: "ไม่มีข้อมูลการเข้าเรียนที่จะบันทึก", error_guardar: "ข้อผิดพลาด: ",
@@ -357,6 +416,8 @@
             document.getElementById('btn-adjuntar-foto').innerHTML = t('btn_adjuntar');
             if (justificacionExistente) document.getElementById('btn-guardar-justificacion').textContent = t('btn_cerrar_just');
             else document.getElementById('btn-guardar-justificacion').textContent = t('btn_guardar_just');
+            document.getElementById('modal-alumno-titulo').textContent = t('modal_alumno_title');
+            document.getElementById('btn-guardar-alumno').textContent = t('btn_guardar_alumno');
             const soloLectura = document.getElementById('solo-lectura');
             if (soloLectura.style.display === 'block') soloLectura.textContent = t('solo_lectura');
             const gradoSelect = document.getElementById('grado');
@@ -961,6 +1022,73 @@
                 } else tg.showAlert(t('error_justificacion') + (d.detail || d.message || ''));
             } catch (e) { tg.showAlert(t('error_justificacion') + e.message); }
             finally { btnGuardar.textContent = textoOriginal; btnGuardar.disabled = false; }
+        }
+
+        // ==================== AGREGAR ALUMNO ====================
+        function abrirModalAlumno() {
+            document.getElementById('modal-alumno').classList.add('show');
+            document.getElementById('modal-alumno-titulo').textContent = t('modal_alumno_title');
+            document.getElementById('btn-guardar-alumno').textContent = t('btn_guardar_alumno');
+            // Actualizar placeholders con traducciones
+            document.getElementById('alumno-nombre').placeholder = t('alumno_nombre');
+            document.getElementById('alumno-apellido-paterno').placeholder = t('alumno_apellido_paterno');
+            document.getElementById('alumno-apellido-materno').placeholder = t('alumno_apellido_materno');
+            document.getElementById('alumno-matricula').placeholder = t('alumno_matricula');
+            document.getElementById('alumno-grado').placeholder = t('alumno_grado');
+            document.getElementById('alumno-seccion').placeholder = t('alumno_seccion');
+        }
+
+        async function guardarAlumno() {
+            const nombre = document.getElementById('alumno-nombre').value.trim();
+            const apellidoPaterno = document.getElementById('alumno-apellido-paterno').value.trim();
+            const apellidoMaterno = document.getElementById('alumno-apellido-materno').value.trim();
+            const matricula = document.getElementById('alumno-matricula').value.trim();
+            const grado = document.getElementById('alumno-grado').value.trim();
+            const seccion = document.getElementById('alumno-seccion').value.trim();
+
+            if (!nombre || !matricula || !grado || !seccion) {
+                tg.showAlert('Completa nombre, matrícula, grado y sección');
+                return;
+            }
+
+            const btn = document.getElementById('btn-guardar-alumno');
+            const orig = btn.textContent;
+            btn.disabled = true; btn.textContent = t('guardando');
+
+            try {
+                const formData = new FormData();
+                formData.append('nombre', nombre);
+                formData.append('apellido_paterno', apellidoPaterno);
+                formData.append('apellido_materno', apellidoMaterno);
+                formData.append('matricula', matricula);
+                formData.append('grado', grado);
+                formData.append('seccion', seccion);
+
+                const r = await fetch(`${API}/alumnos`, { method: 'POST', body: formData });
+                const d = await r.json();
+
+                if (r.ok && d.success) {
+                    tg.showAlert(t('alumno_exito'));
+                    cerrarModal('modal-alumno');
+                    // Limpiar formulario
+                    document.getElementById('alumno-nombre').value = '';
+                    document.getElementById('alumno-apellido-paterno').value = '';
+                    document.getElementById('alumno-apellido-materno').value = '';
+                    document.getElementById('alumno-matricula').value = '';
+                    document.getElementById('alumno-grado').value = '';
+                    document.getElementById('alumno-seccion').value = '';
+                    // Recargar filtros para que aparezca el nuevo grado/sección
+                    cargarFiltros();
+                } else {
+                    const msg = d.detail || d.message || '';
+                    if (r.status === 409) tg.showAlert(t('alumno_matricula_existe'));
+                    else tg.showAlert(t('alumno_error') + msg);
+                }
+            } catch (e) {
+                tg.showAlert(t('alumno_error') + e.message);
+            } finally {
+                btn.disabled = false; btn.textContent = orig;
+            }
         }
 
         // ==================== QR SCANNER ====================
