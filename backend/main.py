@@ -209,6 +209,61 @@ async def crear_alumno(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/api/alumnos/{alumno_id}")
+async def editar_alumno(
+    alumno_id: str,
+    nombre: str = Form(...),
+    apellido_paterno: str = Form(default=""),
+    apellido_materno: str = Form(default=""),
+    matricula: str = Form(...),
+    grado: str = Form(...),
+    seccion: str = Form(...)
+):
+    try:
+        # Verificar que la nueva matrícula no exista en otro alumno
+        existente = supabase.table("alumnos").select("*").eq("matricula", matricula).execute()
+        if existente.data and len(existente.data) > 0:
+            otro = existente.data[0]
+            if str(otro["id"]) != alumno_id:
+                raise HTTPException(status_code=409, detail="La matricula ya existe en otro alumno")
+
+        data = {
+            "nombre": nombre,
+            "apellido_paterno": apellido_paterno,
+            "apellido_materno": apellido_materno,
+            "matricula": matricula,
+            "grado": grado,
+            "seccion": seccion
+        }
+        result = supabase.table("alumnos").update(data).eq("id", alumno_id).execute()
+        return {"success": True, "data": result.data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/alumnos/{alumno_id}")
+async def eliminar_alumno(alumno_id: str):
+    try:
+        # Verificar si tiene asistencia registrada
+        asistencias = supabase.table("asistencia").select("*").eq("alumno_id", alumno_id).execute()
+        if asistencias.data and len(asistencias.data) > 0:
+            raise HTTPException(status_code=409, detail="No se puede eliminar: el alumno tiene asistencia registrada")
+
+        # Verificar si tiene justificaciones
+        justificaciones = supabase.table("justificaciones").select("*").eq("alumno_id", alumno_id).execute()
+        if justificaciones.data and len(justificaciones.data) > 0:
+            raise HTTPException(status_code=409, detail="No se puede eliminar: el alumno tiene justificaciones registradas")
+
+        result = supabase.table("alumnos").delete().eq("id", alumno_id).execute()
+        return {"success": True, "mensaje": "Alumno eliminado"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/asistencia/hoy")
 async def get_asistencia_hoy(fecha: str, grado: Optional[str] = None, seccion: Optional[str] = None):
     try:
