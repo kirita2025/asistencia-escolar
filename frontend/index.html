@@ -117,17 +117,22 @@
         .form-group input:focus { outline: none; border-color: #667eea; }
         .btn-agregar-alumno { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
 
-        /* ===== MENÚ DESPLEGABLE POR ALUMNO ===== */
-        .menu-container { position: relative; }
+        /* ===== MENÚ DESPLEGABLE POR ALUMNO (entre nombre e iniciales) ===== */
+        .card-header { align-items: center; }
+        .header-info { flex: 1; min-width: 0; }
+        .header-info h3 { font-size: 0.95rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-info span { font-size: 0.78rem; color: #888; }
+        .header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
         .btn-menu {
             background: none; border: none; font-size: 1.3rem; cursor: pointer;
-            color: #888; padding: 4px 8px; border-radius: 8px; line-height: 1;
+            color: #888; padding: 4px 6px; border-radius: 8px; line-height: 1;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation;
         }
-        .btn-menu:active { background: rgba(0,0,0,0.05); }
+        .btn-menu:active { background: rgba(0,0,0,0.08); }
         .menu-dropdown {
-            position: absolute; top: 100%; right: 0; background: white;
-            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            min-width: 180px; z-index: 50; display: none; overflow: hidden;
+            position: absolute; top: calc(100% + 4px); right: 0; background: white;
+            border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+            min-width: 180px; z-index: 100; display: none; overflow: hidden;
             border: 1px solid #eee;
         }
         .menu-dropdown.show { display: block; animation: menuIn 0.15s ease; }
@@ -136,27 +141,42 @@
             width: 100%; padding: 12px 16px; border: none; background: white;
             text-align: left; font-size: 0.85rem; cursor: pointer; display: flex;
             align-items: center; gap: 10px; font-family: inherit;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation;
         }
         .menu-dropdown button:hover { background: #f5f5f5; }
         .menu-dropdown button + button { border-top: 1px solid #f0f0f0; }
         .menu-dropdown .menu-edit { color: #2196f3; }
         .menu-dropdown .menu-delete { color: #f44336; }
 
-        /* ===== BOTÓN JUSTIFICACIÓN COMPACTO ===== */
-        .btn-justificacion {
-            width: 100%; padding: 8px; margin-top: 8px;
-            background: #f8f9fa; border: 1px dashed #c0c0c0;
-            border-radius: 8px; font-size: 0.75rem; color: #666;
-            cursor: pointer; font-family: inherit; font-weight: 500;
-            display: flex; align-items: center; justify-content: center; gap: 6px;
-            transition: all 0.2s;
+        /* ===== PANEL DE JUSTIFICACIÓN AUTO-DESPLEGABLE ===== */
+        .justificacion-panel {
+            background: #f8f9fa; border-radius: 10px; padding: 10px; margin-top: 8px;
+            border: 1px solid #e0e0e0; animation: slideDown 0.2s ease;
         }
-        .btn-justificacion:hover { background: #e3f2fd; border-color: #2196f3; color: #2196f3; }
-        .btn-justificacion.tiene-just {
-            background: #e3f2fd; border: 1px solid #2196f3; color: #2196f3;
+        @keyframes slideDown { from { opacity: 0; max-height: 0; padding: 0 10px; } to { opacity: 1; max-height: 300px; padding: 10px; } }
+        .justificacion-panel textarea {
+            width: 100%; padding: 8px; border: 2px solid #e0e0e0; border-radius: 8px;
+            font-family: inherit; font-size: 0.85rem; min-height: 60px; resize: vertical;
+            -webkit-appearance: none; appearance: none;
         }
-        .btn-justificacion.tiene-just::before { content: "👁️ "; }
-        .btn-justificacion:not(.tiene-just)::before { content: "📷 "; }
+        .justificacion-panel textarea:focus { outline: none; border-color: #2196f3; }
+        .justificacion-panel .btn-mini {
+            padding: 8px 12px; border: none; border-radius: 8px; font-size: 0.75rem;
+            font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 6px;
+            -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+        }
+        .justificacion-panel .btn-mini-guardar { background: #2196f3; color: white; width: 100%; }
+        .justificacion-panel .btn-mini-cancelar { background: #e0e0e0; color: #555; margin-left: 6px; }
+        .justificacion-panel .btn-mini-adjuntar {
+            background: #f0f0f0; border: 1px dashed #bbb; color: #666;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+        }
+        .justificacion-panel .preview-mini { max-width: 100%; border-radius: 6px; margin-top: 6px; border: 1px solid #ddd; }
+        .justificacion-badge {
+            position: absolute; top: -4px; right: -4px; background: #2196f3; color: white;
+            font-size: 0.6rem; width: 14px; height: 14px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-weight: 700;
+        }
     </style>
 <base target="_blank">
 <base target="_blank">
@@ -606,77 +626,203 @@
                 const card = document.createElement('div');
                 card.className = 'card' + (a.estado ? ' completo' : '');
                 card.style.animationDelay = (i * 0.03) + 's';
+                card.dataset.alumnoId = a.id;
 
-                // ===== HEADER con menú ⋮ =====
+                // ===== HEADER: Nombre + Menú ⋮ + Iniciales =====
                 const header = document.createElement('div');
                 header.className = 'card-header';
-                header.innerHTML = `<div><h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span></div>`;
 
-                // Menú container (foto + menú)
-                const menuContainer = document.createElement('div');
-                menuContainer.className = 'menu-container';
-                menuContainer.innerHTML = `<div class="foto">${ini}</div>`;
+                // Info del alumno (izquierda)
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'header-info';
+                infoDiv.innerHTML = `<h3>${a.nombre} ${a.apellido_paterno||''} ${a.apellido_materno||''}</h3><span>Mat: ${a.matricula} · ${a.grado} ${a.seccion}</span>`;
 
+                // Acciones: Menú ⋮ + Foto (derecha)
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'header-actions';
+                actionsDiv.style.position = 'relative';
+
+                // Menú ⋮
                 const btnMenu = document.createElement('button');
                 btnMenu.className = 'btn-menu';
                 btnMenu.innerHTML = '⋮';
-                btnMenu.style.marginLeft = '4px';
-                btnMenu.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); toggleMenu(e, a); });
-                btnMenu.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); toggleMenu(e, a); }, {passive: false});
-                menuContainer.appendChild(btnMenu);
+                btnMenu.dataset.alumnoId = a.id;
+                // Fix Android: usar ontouchstart para abrir inmediatamente
+                const menuHandler = (e) => { e.preventDefault(); e.stopPropagation(); toggleMenu(e, a.id); };
+                btnMenu.addEventListener('click', menuHandler);
+                btnMenu.addEventListener('touchstart', menuHandler, {passive: false});
+                actionsDiv.appendChild(btnMenu);
 
-                // Dropdown del menú
+                // Dropdown del menú (posicionado absoluto respecto a actionsDiv)
                 const dropdown = document.createElement('div');
                 dropdown.className = 'menu-dropdown';
                 dropdown.id = 'menu-' + a.id;
+                // Fix Android: ontouchstart en vez de onclick
                 dropdown.innerHTML = `
-                    <button class="menu-edit" onclick="abrirModalEditarAlumnoPorId('${a.id}'); cerrarTodosMenus(); event.stopPropagation();">
+                    <button class="menu-edit" ontouchstart="event.preventDefault(); event.stopPropagation(); abrirModalEditarAlumnoPorId('${a.id}'); cerrarTodosMenus();" onclick="event.stopPropagation(); abrirModalEditarAlumnoPorId('${a.id}'); cerrarTodosMenus();">
                         ✏️ ${t('alumno_editar')}
                     </button>
-                    <button class="menu-delete" onclick="confirmarEliminarAlumnoPorId('${a.id}'); cerrarTodosMenus(); event.stopPropagation();">
+                    <button class="menu-delete" ontouchstart="event.preventDefault(); event.stopPropagation(); confirmarEliminarAlumnoPorId('${a.id}'); cerrarTodosMenus();" onclick="event.stopPropagation(); confirmarEliminarAlumnoPorId('${a.id}'); cerrarTodosMenus();">
                         🗑️ ${t('alumno_eliminar')}
                     </button>
                 `;
-                menuContainer.appendChild(dropdown);
+                actionsDiv.appendChild(dropdown);
 
-                header.appendChild(menuContainer);
+                // Foto/iniciales
+                const fotoDiv = document.createElement('div');
+                fotoDiv.className = 'foto';
+                fotoDiv.textContent = ini;
+                actionsDiv.appendChild(fotoDiv);
+
+                header.appendChild(infoDiv);
+                header.appendChild(actionsDiv);
 
                 // ===== ESTADOS DE ASISTENCIA =====
                 const estadosDiv = document.createElement('div');
                 estadosDiv.className = 'estados';
+                const tieneJust = justificacionesDelDia[String(a.id)];
+
                 ['P','A','T','J','E'].forEach(cod => {
                     const btn = document.createElement('button');
                     const icon = cod === 'P' ? '✅' : cod === 'A' ? '❌' : cod === 'T' ? '⏰' : cod === 'J' ? '📝' : '🚌';
-                    btn.innerHTML = `<span>${icon}</span><small>${getEstadoLabel(cod)}</small>`;
+
+                    // Badge de justificación en el botón J
+                    let badgeHtml = '';
+                    if (cod === 'J' && tieneJust) {
+                        badgeHtml = '<span class="justificacion-badge">!</span>';
+                        btn.style.position = 'relative';
+                    }
+
+                    btn.innerHTML = `<span>${icon}</span><small>${getEstadoLabel(cod)}</small>${badgeHtml}`;
                     btn.className = a.estado === cod ? (cod === 'P' ? 'sel-p' : cod === 'A' ? 'sel-a' : cod === 'T' ? 'sel-t' : cod === 'J' ? 'sel-j' : 'sel-e') : '';
                     if (fechaSel > new Date().toISOString().split('T')[0]) btn.disabled = true;
-                    btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); marcar(a.id, cod, btn); });
-                    btn.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); marcar(a.id, cod, btn); }, {passive: false});
+
+                    const clickHandler = (e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        if (cod === 'J') {
+                            // Al tocar J: marcar como Justificado Y abrir panel de justificación
+                            marcar(a.id, cod, btn);
+                            setTimeout(() => abrirPanelJustificacion(a.id, card), 150);
+                        } else {
+                            marcar(a.id, cod, btn);
+                        }
+                    };
+                    btn.addEventListener('click', clickHandler);
+                    btn.addEventListener('touchstart', clickHandler, {passive: false});
                     estadosDiv.appendChild(btn);
                 });
-
-                // ===== BOTÓN JUSTIFICACIÓN COMPACTO (debajo de estados) =====
-                const tieneJust = justificacionesDelDia[String(a.id)];
-                const btnJust = document.createElement('button');
-                btnJust.className = 'btn-justificacion' + (tieneJust ? ' tiene-just' : '');
-                btnJust.textContent = tieneJust ? t('btn_ver_just') : t('btn_adjuntar');
-                btnJust.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); abrirJustificacion(a.id); });
-                btnJust.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); abrirJustificacion(a.id); }, {passive: false});
 
                 // Ensamblar card
                 card.appendChild(header);
                 card.appendChild(estadosDiv);
-                card.appendChild(btnJust);
                 container.appendChild(card);
             });
             const busquedaTexto = document.getElementById('busqueda-input')?.value || '';
             if (busquedaTexto) filtrarBusqueda();
         }
 
+        // ===== PANEL DE JUSTIFICACIÓN AUTO-DESPLEGABLE =====
+        function abrirPanelJustificacion(alumnoId, cardElement) {
+            // Cerrar cualquier panel abierto
+            document.querySelectorAll('.justificacion-panel').forEach(p => p.remove());
+
+            const alumno = alumnos.find(a => a.id === alumnoId);
+            if (!alumno) return;
+
+            const existente = justificacionesDelDia[String(alumnoId)];
+            const esSoloLectura = !!existente;
+
+            const panel = document.createElement('div');
+            panel.className = 'justificacion-panel';
+            panel.id = 'panel-just-' + alumnoId;
+
+            if (esSoloLectura) {
+                // Modo ver justificación existente
+                const imageUrl = existente.archivo_url 
+                    ? `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${existente.archivo_url}` 
+                    : null;
+                panel.innerHTML = `
+                    <div style="font-size:0.8rem;color:#666;margin-bottom:6px;font-weight:600;">${alumno.nombre} ${alumno.apellido_paterno||''}</div>
+                    <div style="font-size:0.85rem;color:#333;margin-bottom:8px;padding:8px;background:white;border-radius:6px;border:1px solid #e0e0e0;">${existente.nota || 'Sin nota'}</div>
+                    ${imageUrl ? `<img src="${imageUrl}" class="preview-mini" onclick="window.open('${imageUrl}','_blank')" style="cursor:pointer;"><p style="font-size:0.7rem;color:#888;margin-top:4px;text-align:center;">👆 Tocá para ampliar</p>` : '<p style="font-size:0.8rem;color:#888;text-align:center;padding:8px;">📝 Sin imagen adjunta</p>'}
+                    <div style="font-size:0.7rem;color:#aaa;margin-top:6px;text-align:right;">📅 ${new Date(existente.created_at).toLocaleString('es-ES')}</div>
+                    <button class="btn-mini btn-mini-cancelar" style="width:100%;margin-top:8px;margin-left:0;" ontouchstart="event.preventDefault(); event.stopPropagation(); cerrarPanelJustificacion('${alumnoId}');" onclick="event.stopPropagation(); cerrarPanelJustificacion('${alumnoId}');">✕ Cerrar</button>
+                `;
+            } else {
+                // Modo nueva justificación
+                panel.innerHTML = `
+                    <div style="font-size:0.8rem;color:#666;margin-bottom:6px;font-weight:600;">${alumno.nombre} ${alumno.apellido_paterno||''}</div>
+                    <textarea id="nota-just-${alumnoId}" placeholder="${t('justificacion_placeholder')}"></textarea>
+                    <input type="file" id="archivo-just-${alumnoId}" accept="image/*" capture="camera" style="display:none;" onchange="previewMiniArchivo(this, '${alumnoId}')">
+                    <div id="preview-mini-${alumnoId}"></div>
+                    <div style="display:flex;gap:6px;">
+                        <button class="btn-mini btn-mini-adjuntar" style="flex:1;" ontouchstart="event.preventDefault(); event.stopPropagation(); document.getElementById('archivo-just-${alumnoId}').click();" onclick="event.stopPropagation(); document.getElementById('archivo-just-${alumnoId}').click();">📷 ${t('btn_adjuntar')}</button>
+                        <button class="btn-mini btn-mini-cancelar" style="flex:1;margin-left:0;" ontouchstart="event.preventDefault(); event.stopPropagation(); cerrarPanelJustificacion('${alumnoId}');" onclick="event.stopPropagation(); cerrarPanelJustificacion('${alumnoId}');">✕ Cancelar</button>
+                    </div>
+                    <button class="btn-mini btn-mini-guardar" ontouchstart="event.preventDefault(); event.stopPropagation(); guardarJustificacionInline('${alumnoId}');" onclick="event.stopPropagation(); guardarJustificacionInline('${alumnoId}');">${t('btn_guardar_just')}</button>
+                `;
+            }
+
+            cardElement.appendChild(panel);
+
+            // Scroll suave al panel
+            setTimeout(() => {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+
+        function cerrarPanelJustificacion(alumnoId) {
+            const panel = document.getElementById('panel-just-' + alumnoId);
+            if (panel) panel.remove();
+        }
+
+        function previewMiniArchivo(input, alumnoId) {
+            const previewDiv = document.getElementById('preview-mini-' + alumnoId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => { 
+                    previewDiv.innerHTML = '<img src="' + e.target.result + '" class="preview-mini">'; 
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function guardarJustificacionInline(alumnoId) {
+            const nota = document.getElementById('nota-just-' + alumnoId)?.value.trim() || '';
+            const archivoInput = document.getElementById('archivo-just-' + alumnoId);
+            if (!nota && !archivoInput?.files?.length) { tg.showAlert(t('justificacion_sin_nota')); return; }
+
+            const formData = new FormData();
+            formData.append('alumno_id', alumnoId);
+            formData.append('fecha', fechaSel);
+            formData.append('nota', nota || 'Sin nota');
+            if (archivoInput && archivoInput.files.length) formData.append('archivo', archivoInput.files[0]);
+
+            try {
+                const r = await fetch(`${API}/asistencia/justificacion`, { method: 'POST', body: formData });
+                let d;
+                if (r.headers.get('content-type')?.includes('application/json')) d = await r.json();
+                else throw new Error('Error en el servidor');
+
+                if (r.ok && d.success) {
+                    justificacionesDelDia[String(alumnoId)] = { 
+                        alumno_id: alumnoId, fecha: fechaSel, nota: nota, 
+                        archivo_url: d.data?.[0]?.archivo_url || null, 
+                        created_at: new Date().toISOString() 
+                    };
+                    renderizar();
+                    tg.showAlert(t('justificacion_guardada'));
+                } else {
+                    tg.showAlert(t('error_justificacion') + (d.detail || d.message || ''));
+                }
+            } catch (e) { tg.showAlert(t('error_justificacion') + e.message); }
+        }
+
         // ===== FUNCIONES AUXILIARES PARA EL MENÚ =====
-        function toggleMenu(e, alumno) {
+        function toggleMenu(e, alumnoId) {
             e.stopPropagation();
-            const dropdown = document.getElementById('menu-' + alumno.id);
+            const dropdown = document.getElementById('menu-' + alumnoId);
+            if (!dropdown) return;
             const isOpen = dropdown.classList.contains('show');
             cerrarTodosMenus();
             if (!isOpen) dropdown.classList.add('show');
@@ -688,7 +834,7 @@
 
         // Cerrar menús al tocar fuera
         document.addEventListener('click', cerrarTodosMenus);
-        document.addEventListener('touchend', cerrarTodosMenus);
+        document.addEventListener('touchstart', cerrarTodosMenus, {passive: true});
 
         function abrirModalEditarAlumnoPorId(alumnoId) {
             const alumno = alumnos.find(a => a.id === alumnoId);
@@ -1082,40 +1228,10 @@
         }
 
         async function abrirJustificacion(alumnoId) {
-            const alumno = alumnos.find(a => a.id === alumnoId);
-            if (!alumno) return;
-            alumnoJustificacionId = alumnoId;
-            const existente = await cargarJustificacionExistente(alumnoId);
-            justificacionExistente = existente;
-            document.getElementById('justificacion-alumno').textContent = alumno.nombre + ' ' + (alumno.apellido_paterno || '');
-            const notaInput = document.getElementById('justificacion-nota');
-            const previewDiv = document.getElementById('justificacion-preview');
-            const archivoInput = document.getElementById('justificacion-archivo');
-            const infoDiv = document.getElementById('justificacion-info');
-            const btnAdjuntar = document.getElementById('btn-adjuntar-foto');
-            const btnGuardar = document.getElementById('btn-guardar-justificacion');
-            const titulo = document.getElementById('modal-justificacion-titulo');
-            notaInput.value = ''; previewDiv.innerHTML = ''; archivoInput.value = ''; infoDiv.style.display = 'none';
-            if (existente) {
-                titulo.textContent = t('modal_justificacion_title_view');
-                notaInput.value = existente.nota || ''; notaInput.readOnly = true; notaInput.style.background = '#f5f5f5';
-                infoDiv.style.display = 'block';
-                infoDiv.innerHTML = `<strong>📅 Guardado:</strong> ${new Date(existente.created_at).toLocaleString('es-ES')}<br><strong>👤 Por:</strong> Usuario #${existente.user_id || 'desconocido'}`;
-                if (existente.archivo_url) {
-                    const imageUrl = `${SUPABASE_URL}/storage/v1/object/public/justificaciones/${existente.archivo_url}`;
-                    previewDiv.innerHTML = `<div style="margin:10px 0;"><img src="${imageUrl}" class="adjunto-preview" onclick="window.open('${imageUrl}','_blank')" style="cursor:pointer;max-width:100%;border-radius:8px;"><p style="font-size:0.75rem;color:#888;margin-top:6px;text-align:center;">👆 Tocá la imagen para ver en tamaño completo</p></div>`;
-                } else previewDiv.innerHTML = '<p style="color:#888;font-size:0.85rem;text-align:center;padding:10px;">📝 Solo nota de texto, sin imagen adjunta</p>';
-                btnAdjuntar.style.display = 'none';
-                btnGuardar.textContent = t('btn_cerrar_just');
-                btnGuardar.onclick = () => cerrarModal('modal-justificacion');
-            } else {
-                titulo.textContent = t('modal_justificacion_title_new');
-                notaInput.readOnly = false; notaInput.style.background = 'white'; notaInput.placeholder = t('justificacion_placeholder');
-                btnAdjuntar.style.display = 'inline-block';
-                btnGuardar.textContent = t('btn_guardar_just');
-                btnGuardar.onclick = guardarJustificacion;
-            }
-            document.getElementById('modal-justificacion').classList.add('show');
+            // Ahora la justificación se maneja inline al tocar J
+            // Esta función se mantiene por compatibilidad pero redirige al panel inline
+            const card = document.querySelector(`.card[data-alumno-id="${alumnoId}"]`);
+            if (card) abrirPanelJustificacion(alumnoId, card);
         }
 
         function previewArchivo(input) {
